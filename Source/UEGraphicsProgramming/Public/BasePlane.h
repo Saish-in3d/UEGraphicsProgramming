@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "BasePlane.generated.h"
 
-UCLASS()
+UCLASS(BlueprintType)
 class UEGRAPHICSPROGRAMMING_API ABasePlane : public AActor
 {
 	GENERATED_BODY()
@@ -31,7 +31,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
     	class UMaterialInterface* PlaneMeshMaterial;
 	
-	
+	UPROPERTY()
+	UTextureRenderTarget2D* TempOutputRenderTarget;
 
 public:	//Variables
 
@@ -47,8 +48,7 @@ private: // Variables
 	UPROPERTY()
 	UMaterialInstanceDynamic* DynamicMaterialInstance;
 	
-	UPROPERTY()
-	UTextureRenderTarget2D* TempOutputRenderTarget;
+
 	
 	
 	

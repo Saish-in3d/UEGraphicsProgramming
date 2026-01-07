@@ -1,12 +1,16 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "UEGraphicsProgramming.h"
+#include "Modules/ModuleInterface.h"
+#include "Interfaces/IPluginManager.h"
 
 #define LOCTEXT_NAMESPACE "FUEGraphicsProgrammingModule"
 
 void FUEGraphicsProgrammingModule::StartupModule()
 {
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	/// Set up the Shader Directories
+	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("UEGraphicsProgramming"))->GetBaseDir(), TEXT("Shaders"));
+	AddShaderSourceDirectoryMapping(TEXT("/Plugins/UEGraphicsProgramming"), PluginShaderDir);
 }
 
 void FUEGraphicsProgrammingModule::ShutdownModule()

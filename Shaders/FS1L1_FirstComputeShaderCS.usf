@@ -1,0 +1,16 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+
+shared RWTexture2D<float4> FS1L1_Output;
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS1L1_FirstComputeShaderCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	
+    //Drawing Sierpinski Triangle
+	FS1L1_Output[DispatchThreadId.xy] = float4(DispatchThreadId.x & DispatchThreadId.y,(DispatchThreadId.x & 15)/15.0,
+		(DispatchThreadId.y & 15)/15.0,0.0);
+}

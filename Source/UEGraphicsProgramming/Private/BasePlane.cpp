@@ -1,7 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
-#include "Components/StaticMeshComponent.h"
 #include "BasePlane.h"
+#include "Components/StaticMeshComponent.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -94,6 +93,9 @@ void ABasePlane::InitRenderTarget()
 	TempOutputRenderTarget->ClearColor = FLinearColor::Blue;
 	TempOutputRenderTarget->bGPUSharedFlag = true;
 	TempOutputRenderTarget->bAutoGenerateMips = false;
+	TempOutputRenderTarget->bCanCreateUAV = true;
+	
+	
 	//TempOutputRenderTarget->AddToRoot();
 	
 	TempOutputRenderTarget->UpdateResourceImmediate();

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class UEGraphicsProgramming : ModuleRules
 {
@@ -8,27 +9,16 @@ public class UEGraphicsProgramming : ModuleRules
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
-		PublicIncludePaths.AddRange(
-			new string[] {
-				// ... add public include paths required here ...
-			}
-			);
-				
-		
-		PrivateIncludePaths.AddRange(
-			new string[] {
-				// ... add other private include paths required here ...
-			}
-			);
-			
-		
-		PublicDependencyModuleNames.AddRange(
-			new string[]
-			{
-				"Core",
-				// ... add other public dependencies that you statically link with here ...
-			}
-			);
+		PublicDependencyModuleNames.AddRange(new string[] {
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"RenderCore",
+			"Renderer",
+			"RHI",
+			"Projects",
+			"MediaAssets",
+		});
 			
 		
 		PrivateDependencyModuleNames.AddRange(
@@ -40,14 +30,17 @@ public class UEGraphicsProgramming : ModuleRules
 				"SlateCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
-			);
+		);
 		
 		
-		DynamicallyLoadedModuleNames.AddRange(
-			new string[]
-			{
-				// ... add any modules that your module loads dynamically here ...
+		string EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
+
+		PrivateIncludePaths.AddRange(
+			new string[] {
+				// Including to Find shader utilities path
+				Path.Combine(EngineDir, "Source/Runtime/Renderer/Private"),
+				Path.Combine(EngineDir, "Source/Runtime/Renderer/Internal")
 			}
-			);
+		);
 	}
 }
