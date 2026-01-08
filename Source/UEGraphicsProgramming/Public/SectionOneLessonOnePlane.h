@@ -33,7 +33,8 @@ protected:
 
 public:	//Variables
 
-
+	UPROPERTY(EditInstanceOnly)
+	int LessonIndex = 0;
 	
 	
 	
