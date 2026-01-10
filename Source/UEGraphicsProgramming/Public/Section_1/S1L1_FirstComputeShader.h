@@ -41,7 +41,7 @@ class UEGRAPHICSPROGRAMMING_API FS1L1_FirstComputeShaderCS : public FGlobalShade
 	
 	//Shader run function
 
-	static void FS1L1_FirstComputeShaderRun(UTextureRenderTarget2D* OutputRenderTarget);
+	static void FS1L1_FirstCSRun(UTextureRenderTarget2D* OutputRenderTarget);
 	
 };
 

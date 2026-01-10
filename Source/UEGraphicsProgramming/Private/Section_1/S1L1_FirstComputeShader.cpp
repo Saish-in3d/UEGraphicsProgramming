@@ -17,7 +17,7 @@ IMPLEMENT_GLOBAL_SHADER(FS1L1_FirstComputeShaderCS, "/Plugins/UEGraphicsProgramm
 
 
 
-void FS1L1_FirstComputeShaderCS::FS1L1_FirstComputeShaderRun(UTextureRenderTarget2D* OutputRenderTarget)
+void FS1L1_FirstComputeShaderCS::FS1L1_FirstCSRun(UTextureRenderTarget2D* OutputRenderTarget)
 {
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(

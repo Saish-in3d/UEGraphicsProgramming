@@ -1,0 +1,20 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+
+shared RWTexture2D<float4> FS1L3_Output;
+int TextureResolution;
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS1L3_SplitScreenCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	
+	//Bitshifting the TextureResolution value to divide by 2
+	int HalfRes = TextureResolution >> 1;
+	
+	//Using Step(ValueA,valueB) if ValueA >= ValueB then return 1 else return 0
+	FS1L3_Output[DispatchThreadId.xy] = float4(step(HalfRes,DispatchThreadId.x),step(HalfRes,DispatchThreadId.y),
+		0,1);
+}
