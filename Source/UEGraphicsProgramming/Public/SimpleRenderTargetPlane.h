@@ -34,6 +34,9 @@ protected:
 public:	//Variables
 
 	UPROPERTY(EditInstanceOnly)
+	int SectionIndex = 0;
+	
+	UPROPERTY(EditInstanceOnly)
 	int LessonIndex = 0;
 	
 	

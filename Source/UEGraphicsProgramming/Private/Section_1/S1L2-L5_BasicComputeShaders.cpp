@@ -44,7 +44,7 @@ void FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(UTextureRenderTarget2D* OutputRen
 			
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
-				RDG_EVENT_NAME("FS1L1"),
+				RDG_EVENT_NAME("FS1L2"),
 				FS1L1_ComputeShader,
 				FS1L2_Parameters,
 				GroupCount
@@ -149,7 +149,7 @@ void FS1L4_SolidCircleCS::FS1L4_SolidCircleCSRun(UTextureRenderTarget2D* OutputR
 			
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
-				RDG_EVENT_NAME("FS1L3"),
+				RDG_EVENT_NAME("FS1L4"),
 				FS1L4_ComputeShader,
 				FS1L4_Parameters,
 				GroupCount

@@ -4,6 +4,7 @@
 #include "SimpleRenderTargetPlane.h"
 #include "Section_1/S1L1_FirstComputeShader.h"
 #include "Section_1/S1L2-L5_BasicComputeShaders.h"
+#include "S2_ExternalDataBasicShaders.h"
 
 ASimpleRenderTargetPlane::ASimpleRenderTargetPlane() 
 {
@@ -16,14 +17,30 @@ void ASimpleRenderTargetPlane::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	if (!TempOutputRenderTarget){return;}
-	switch (LessonIndex)
+	
+	if (SectionIndex == 1)
 	{
+		switch (LessonIndex)
+		{
 		default:break;
 		case 0:break;
 		case 1:FS1L1_FirstComputeShaderCS::FS1L1_FirstCSRun(TempOutputRenderTarget); break;
 		case 2:FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);break;
 		case 3:FS1L3_SplitScreenCS::FS1L3_SplitScreenCSRun(TempOutputRenderTarget);break;
 		case 4:FS1L4_SolidCircleCS::FS1L4_SolidCircleCSRun(TempOutputRenderTarget);break;
+		}
+	}
+	else if (SectionIndex == 2)
+	{
+		switch (LessonIndex)
+		{
+		default:break;
+		case 0:break;
+		case 1:FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(TempOutputRenderTarget); break;
+		/*case 2:FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);break;
+		case 3:FS1L3_SplitScreenCS::FS1L3_SplitScreenCSRun(TempOutputRenderTarget);break;
+		case 4:FS1L4_SolidCircleCS::FS1L4_SolidCircleCSRun(TempOutputRenderTarget);break;*/
+		}
 	}
 	
 	
