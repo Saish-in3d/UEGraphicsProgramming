@@ -4,20 +4,20 @@
 
 #include "CoreMinimal.h"
 #include "BasePlane.h"
-#include "SectionOneLessonOnePlane.generated.h"
+#include "SimpleRenderTargetPlane.generated.h"
 
 /**
  * 
  */
 UCLASS(Blueprintable)
-class UEGRAPHICSPROGRAMMING_API ASectionOneLessonOnePlane : public ABasePlane
+class UEGRAPHICSPROGRAMMING_API ASimpleRenderTargetPlane : public ABasePlane
 {
 	GENERATED_BODY()
 	
 	
 public:	
 	// Sets default values for this actor's properties
-	ASectionOneLessonOnePlane();
+	ASimpleRenderTargetPlane();
 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

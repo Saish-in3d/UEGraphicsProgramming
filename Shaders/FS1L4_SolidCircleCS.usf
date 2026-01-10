@@ -1,0 +1,31 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+
+shared RWTexture2D<float4> FS1L4_Output;
+int CircleRadius;
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS1L4_SolidCircleCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	//This kernel only works properly when I cast some values to float or float2 else I get 1/4th of circle on texture
+	
+	//Casting circle radius to Float
+	float CircleRadiusInt = (float2)CircleRadius;
+	
+	//Calculating Centre of render target which will be centre of circle 
+	uint2 Centre = uint2(256 >> 1,256 >> 1);//256 assumed (I could have passed the value in the shader params like L3)
+	
+	//Calculating thread point wrt circle centre
+	float2 ThreadPointLocationFromCentre = (float2)((int2)(DispatchThreadId.xy - Centre)) ;
+	
+	//Calculating distance using length() of vector 
+	float PointDistancefromcentre = (float2)(abs(length(ThreadPointLocationFromCentre)));
+	
+	//Using Step(ValueA,valueB) if ValueA >= ValueB then return 1 else return 0
+	FS1L4_Output[DispatchThreadId.xy] = float4(step(CircleRadiusInt,PointDistancefromcentre),
+		step(CircleRadiusInt,PointDistancefromcentre),
+		1.f,1.f);
+}

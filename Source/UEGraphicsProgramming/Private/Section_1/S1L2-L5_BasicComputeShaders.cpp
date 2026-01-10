@@ -110,3 +110,56 @@ void FS1L3_SplitScreenCS::FS1L3_SplitScreenCSRun(UTextureRenderTarget2D* OutputR
 	
 	
 }
+
+
+IMPLEMENT_GLOBAL_SHADER(FS1L4_SolidCircleCS, "/Plugins/UEGraphicsProgramming/FS1L4_SolidCircleCS.usf",
+						"FS1L4_SolidCircleCS", SF_Compute);
+
+void FS1L4_SolidCircleCS::FS1L4_SolidCircleCSRun(UTextureRenderTarget2D* OutputRenderTarget)
+{
+	
+	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
+	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
+		[OutputRenderTarget](FRHICommandListImmediate& RHICmdList)
+		{
+			
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+			//Registering render target in RDG 
+			FRDGTextureRef FS1L4_OutputTextureRDGRef = GraphBuilder.RegisterExternalTexture(
+				CreateRenderTarget(OutputRenderTarget->GetRenderTargetResource()->GetTextureRHI(),
+					TEXT("FS1L4_RenderTarget"))) ;
+			
+			//ShaderParameterSetup
+			FS1L4_SolidCircleCS::FParameters* FS1L4_Parameters = GraphBuilder.AllocParameters<
+				FS1L4_SolidCircleCS::FParameters>();
+			
+			FS1L4_Parameters->FS1L4_Output =  GraphBuilder.CreateUAV(FS1L4_OutputTextureRDGRef)  ; //Compute Shader directly writes on this RT
+			FS1L4_Parameters->CircleRadius = OutputRenderTarget->SizeX/3; //Assuming that RT is a squaree
+			//Dispatching shader
+			//Initialising compute shader object
+			TShaderMapRef<FS1L4_SolidCircleCS> FS1L4_ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			
+			//Setting up Group Count
+			FIntVector GroupCount = FComputeShaderUtils::GetGroupCount(FIntPoint(OutputRenderTarget->SizeX,
+				OutputRenderTarget->SizeY), FComputeShaderUtils::kGolden2DGroupSize);
+			
+			//Actually dispatching the shader
+			
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("FS1L3"),
+				FS1L4_ComputeShader,
+				FS1L4_Parameters,
+				GroupCount
+				);
+			
+			GraphBuilder.Execute();
+			
+		}
+	);
+	
+	
+	
+}
