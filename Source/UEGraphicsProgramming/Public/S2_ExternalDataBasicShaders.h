@@ -21,6 +21,7 @@ public:
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, FS2L1_Output)
 	SHADER_PARAMETER(int, Centre)
 	SHADER_PARAMETER(int, CircleRadius)
+	SHADER_PARAMETER(float, Deltatime)
 	END_SHADER_PARAMETER_STRUCT()
 	
 	// Basic shader initialization
@@ -32,13 +33,14 @@ public:
 	// Define environment variables used by compute shader
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 	{
-		OutEnvironment.SetDefine(TEXT("THREADS_X"), 1);
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
 		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
 		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
 	}
 	
 	//Shader run function
 
-	static void FS2L1_SingleThreadRingCSRun(UTextureRenderTarget2D* OutputRenderTarget);
+	static void FS2L1_SingleThreadRingCSRun(UTextureRenderTarget2D* OutputRenderTarget, const float inDeltatime);
 	
 };
+

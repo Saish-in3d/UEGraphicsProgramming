@@ -12,12 +12,12 @@ IMPLEMENT_GLOBAL_SHADER(FS2L1_SingleThreadRingCS, "/Plugins/UEGraphicsProgrammin
 
 
 
-void FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(UTextureRenderTarget2D* OutputRenderTarget)
+void FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(UTextureRenderTarget2D* OutputRenderTarget, const float inDeltatime)
 {
 	
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
-		[OutputRenderTarget](FRHICommandListImmediate& RHICmdList)
+		[OutputRenderTarget,inDeltatime](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//Getting new graph builder each frame
@@ -35,6 +35,7 @@ void FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(UTextureRenderTarget2
 			FS2L1_Parameters->FS2L1_Output =  GraphBuilder.CreateUAV(FS2L1_OutputTextureRDGRef)  ; //Compute Shader directly writes on this RT
 			FS2L1_Parameters->Centre = OutputRenderTarget->SizeX/2;
 			FS2L1_Parameters->CircleRadius = OutputRenderTarget->SizeX/3; //Assuming that RT is a squaree
+			FS2L1_Parameters->Deltatime = inDeltatime;
 			//Dispatching shader
 			//Initialising compute shader object
 			TShaderMapRef<FS2L1_SingleThreadRingCS> FS2L1_ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
