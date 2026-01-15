@@ -65,7 +65,7 @@ void FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(UTextureRenderTarget2
 TArray<FCircleData> FS2L2_CustomStructBufferCS::InitCircleDataBuffer(int32 inTotalCircleCount, int RenderTargetSize)
 {
 	TArray<FCircleData> TempCircleDataArray;
-	TempCircleDataArray.SetNum(inTotalCircleCount);
+	//TempCircleDataArray.Init(FCircleData(),inTotalCircleCount);
 	
 	float Speed = 100.f; //Pixel distance travelled by circle in a unit second
 	float Halfspeed = Speed/2;
@@ -73,8 +73,11 @@ TArray<FCircleData> FS2L2_CustomStructBufferCS::InitCircleDataBuffer(int32 inTot
 	float MaxRadius = 30.f;
 	float RadiusRange = MaxRadius - MinRadius;
 	
-	for (FCircleData TempCircleData : TempCircleDataArray)
+	for (int i = 0; i < inTotalCircleCount; i++)
 	{
+		
+		FCircleData& TempCircleData = TempCircleDataArray.AddDefaulted_GetRef();
+		
 		//Origin means start location of circle at the start of simulation
 		TempCircleData.Origin.X = FMath::RandRange(0, RenderTargetSize);
 		TempCircleData.Origin.Y = FMath::RandRange(0, RenderTargetSize);
@@ -83,6 +86,8 @@ TArray<FCircleData> FS2L2_CustomStructBufferCS::InitCircleDataBuffer(int32 inTot
 		TempCircleData.Velocity.Y = FMath::RandRange(0.f, Speed) - Halfspeed;
 		
 		TempCircleData.Radius = FMath::RandRange(0.f, RadiusRange) + MinRadius;
+		
+		
 
 	}
 	
@@ -121,7 +126,7 @@ void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTar
 				sizeof(FCircleData),
 				inCircleDatBuffer.Num(),
 				inCircleDatBuffer.GetData(),
-				sizeof(FCircleData)*inCircleDatBuffer.Num());
+				(sizeof(FCircleData))*(inCircleDatBuffer.Num()));
 			
 			
 			//2.cREATING srv 

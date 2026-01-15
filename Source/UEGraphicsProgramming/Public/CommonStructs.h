@@ -6,13 +6,11 @@
 struct FCircleData
 {
 	FVector2f Origin;
-
 	FVector2f Velocity;
-
 	float Radius;
-	
-	//float Padding[3];
-	
 };
 
 
+/*FVector2f Origin;
+FVector2f Velocity;
+float Radius;*/

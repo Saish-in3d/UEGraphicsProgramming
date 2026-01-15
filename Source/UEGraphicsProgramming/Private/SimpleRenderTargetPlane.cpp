@@ -11,7 +11,12 @@
 ASimpleRenderTargetPlane::ASimpleRenderTargetPlane() 
 {
 	
-	CircleDataBuffer.Init(FCircleData(),32);
+	//CircleDataBuffer.Init(FCircleData(),32);
+	if (!S2_L2_BufferCreated)
+	{
+		CircleDataBuffer = FS2L2_CustomStructBufferCS::InitCircleDataBuffer(32,256);
+		S2_L2_BufferCreated= true;
+	}
 	
 }
 
@@ -45,11 +50,7 @@ void ASimpleRenderTargetPlane::Tick(float DeltaTime)
 			FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(TempOutputRenderTarget, this->GetGameTimeSinceCreation()); break;
 		case 2:
 			
-			if (!S2_L2_BufferCreated)
-			{
-				CircleDataBuffer = FS2L2_CustomStructBufferCS::InitCircleDataBuffer(32,256);
-				S2_L2_BufferCreated= true;
-			}
+			
 			if (CircleDataBuffer.IsEmpty()){return;}
 			FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);
 			FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(TempOutputRenderTarget, this->GetGameTimeSinceCreation(),CircleDataBuffer); break;

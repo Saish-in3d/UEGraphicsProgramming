@@ -15,6 +15,8 @@ struct FCircleData
 shared RWTexture2D<float4> FS2L2_Output;
 float Deltatime;
 
+int TextureResolution;
+
 StructuredBuffer<FCircleData> CircleDataBuffer;
 
 
@@ -76,7 +78,7 @@ float2 random2(float value){
 void FS2L2_CustomStructBufferCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	//Thread marked as black to see if we are running on single thread
-	FS2L2_Output[DispatchThreadId.xy] = float4(int(0.f),int(0.f),int(0.f),int(1.f));
+	//FS2L2_Output[DispatchThreadId.xy] = float4(int(0.f),int(0.f),int(0.f),int(1.f));
 	
 	if (DispatchThreadId.x >= 32)
 		return;
@@ -84,13 +86,16 @@ void FS2L2_CustomStructBufferCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	uint2 BufferCentre = (uint2)(CircleDataBuffer[DispatchThreadId.x].Origin +
 															CircleDataBuffer[DispatchThreadId.x].Velocity * Deltatime);
 	
-	
 	int BufferRadius = CircleDataBuffer[DispatchThreadId.x].Radius;
 	
-	//Changing to random centre and radius, check previous commit to see simple implementation
-	uint2 RandCentre = (uint2)(random2((float)DispatchThreadId.x + Deltatime )*256);
-	int RandRadius = (int)(random(((float)DispatchThreadId.x))*30); 
+	
+	if (BufferCentre.x > TextureResolution) { BufferCentre.x %= TextureResolution; } 
+	if (BufferCentre.x < 0) { BufferCentre.x = (-1) * BufferCentre.x % TextureResolution; } 
+	if (BufferCentre.y > TextureResolution) { BufferCentre.y %= TextureResolution; } 
+	if (BufferCentre.y < 0) { BufferCentre.y = (-1) * BufferCentre.y % TextureResolution; }
+	
+	
 	
 	drawCircle(BufferCentre,BufferRadius);
-	//drawCircle(Centre,CircleRadius);
+	
 }
