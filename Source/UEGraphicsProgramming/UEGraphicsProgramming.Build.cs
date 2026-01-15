@@ -31,7 +31,9 @@ public class UEGraphicsProgramming : ModuleRules
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);
-		
+		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../../Shaders"));
+		//PrivateIncludePathModuleNames.Add("Shaders");
+
 		
 		string EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
 

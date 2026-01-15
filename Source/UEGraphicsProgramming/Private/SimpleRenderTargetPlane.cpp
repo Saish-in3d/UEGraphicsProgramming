@@ -6,9 +6,12 @@
 #include "Section_1/S1L2-L5_BasicComputeShaders.h"
 #include "S2_ExternalDataBasicShaders.h"
 
+//namespace  CircleDataNamespace
+//{
 ASimpleRenderTargetPlane::ASimpleRenderTargetPlane() 
 {
 	
+	CircleDataBuffer.Init(FCircleData(),32);
 	
 }
 
@@ -40,8 +43,17 @@ void ASimpleRenderTargetPlane::Tick(float DeltaTime)
 			//Clearing previous output by setting clear color first on RT
 			FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);
 			FS2L1_SingleThreadRingCS::FS2L1_SingleThreadRingCSRun(TempOutputRenderTarget, this->GetGameTimeSinceCreation()); break;
-		/*case 2:FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);break;
-		case 3:FS1L3_SplitScreenCS::FS1L3_SplitScreenCSRun(TempOutputRenderTarget);break;
+		case 2:
+			
+			if (!S2_L2_BufferCreated)
+			{
+				CircleDataBuffer = FS2L2_CustomStructBufferCS::InitCircleDataBuffer(32,256);
+				S2_L2_BufferCreated= true;
+			}
+			if (CircleDataBuffer.IsEmpty()){return;}
+			FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);
+			FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(TempOutputRenderTarget, this->GetGameTimeSinceCreation(),CircleDataBuffer); break;
+		/*case 3:FS1L3_SplitScreenCS::FS1L3_SplitScreenCSRun(TempOutputRenderTarget);break;
 		case 4:FS1L4_SolidCircleCS::FS1L4_SolidCircleCSRun(TempOutputRenderTarget);break;*/
 		}
 	}
@@ -59,3 +71,4 @@ void ASimpleRenderTargetPlane::BeginPlay()
 	
 	
 }
+//}

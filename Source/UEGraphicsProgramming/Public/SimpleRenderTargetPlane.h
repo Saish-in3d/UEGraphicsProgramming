@@ -4,11 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "BasePlane.h"
+#include "CommonStructs.h"
 #include "SimpleRenderTargetPlane.generated.h"
 
 /**
  * 
  */
+
 UCLASS(Blueprintable)
 class UEGRAPHICSPROGRAMMING_API ASimpleRenderTargetPlane : public ABasePlane
 {
@@ -43,7 +45,8 @@ public:	//Variables
 	
 private: // Variables
 
-	
+	bool S2_L2_BufferCreated = false;
+	TArray<FCircleData> CircleDataBuffer;
 	
 	
 private: //Functions

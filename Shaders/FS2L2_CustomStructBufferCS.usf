@@ -1,0 +1,96 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+struct FCircleData
+{
+	float2 Origin;
+
+	float2 Velocity;
+
+	float Radius;
+};
+
+
+shared RWTexture2D<float4> FS2L2_Output;
+float Deltatime;
+
+StructuredBuffer<FCircleData> CircleDataBuffer;
+
+
+
+
+void plotsinglepoint(int X, int y, uint2 centre)
+{
+
+	FS2L2_Output[uint2(centre.x + X, centre.y+ y)] = float4(int(0.f),int(0.f),int(1.f),int(1.f));
+}
+
+
+void ploteightpoints(int x, int y, uint2 centre)
+{
+	plotsinglepoint(  x,  y, centre );  plotsinglepoint(  y,  x, centre );
+	plotsinglepoint(  x, -y, centre );  plotsinglepoint(  y, -x, centre );
+	plotsinglepoint( -x, -y, centre );  plotsinglepoint( -y, -x, centre );
+	plotsinglepoint( -x,  y, centre );  plotsinglepoint( -y,  x, centre );
+}
+
+//Using Bresenham's algorithm to draw circle
+void drawCircle( uint2 centre, int radius){
+	int x = 0;
+	int y = radius;
+	int d = 1 - radius;
+
+	while (x < y)
+	{
+		if (d < 0){
+			d += 2 * x + 3;
+		}else{
+			d += 2 * (x - y) + 5;
+			y--;
+		}
+		
+		ploteightpoints(x, y, centre);
+
+		x++;
+	}
+}
+
+/*Returns pseudo random number in range 0 <= x < 1 */
+//Returns random value from 0-1
+float random(float value, float seed = 0.546){
+	float random = (frac(sin(value + seed) * 143758.5453));// + 1.0)/2.0;
+	return random;
+}
+
+//Returns random value from 0-1
+float2 random2(float value){
+	return float2(
+		random(value, 3.9812),
+		random(value, 7.1536)
+	);
+}
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS2L2_CustomStructBufferCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	//Thread marked as black to see if we are running on single thread
+	FS2L2_Output[DispatchThreadId.xy] = float4(int(0.f),int(0.f),int(0.f),int(1.f));
+	
+	if (DispatchThreadId.x >= 32)
+		return;
+	
+	uint2 BufferCentre = (uint2)(CircleDataBuffer[DispatchThreadId.x].Origin +
+															CircleDataBuffer[DispatchThreadId.x].Velocity * Deltatime);
+	
+	
+	int BufferRadius = CircleDataBuffer[DispatchThreadId.x].Radius;
+	
+	//Changing to random centre and radius, check previous commit to see simple implementation
+	uint2 RandCentre = (uint2)(random2((float)DispatchThreadId.x + Deltatime )*256);
+	int RandRadius = (int)(random(((float)DispatchThreadId.x))*30); 
+	
+	drawCircle(BufferCentre,BufferRadius);
+	//drawCircle(Centre,CircleRadius);
+}
