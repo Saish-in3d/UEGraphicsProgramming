@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "RHIGPUReadback.h"
 #include "HISMActor.generated.h"
 
 UCLASS()
@@ -15,17 +16,17 @@ public:
 	// Sets default values for this actor's properties
 	AHISMActor();
 	
-	UPROPERTY(EditInstanceOnly)
-	UStaticMesh * StaticMesh;
+	UPROPERTY(EditInstanceOnly, meta = (category = "ActorDefaults"))
+	UStaticMesh * HISMStaticMesh;
 	
-	UPROPERTY(EditInstanceOnly)
+	UPROPERTY(EditInstanceOnly, meta = (category = "ActorDefaults"))
 	int SectionIndex = 0;
 	
-	UPROPERTY(EditInstanceOnly)
+	UPROPERTY(EditInstanceOnly, meta = (category = "ActorDefaults"))
 	int LessonIndex = 0;
 	
-	UPROPERTY(EditInstanceOnly)
-	int InstanceCount = 0;
+	UPROPERTY(EditInstanceOnly, meta = (category = "ActorDefaults"))
+	int InstanceCount = 1;
 
 protected:
 	// Called when the game starts or when spawned
@@ -43,5 +44,11 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	
+	TArray<FTransform> TransformsArray;
+	
+private:
 
+	TUniquePtr<FRHIGPUBufferReadback> StarTransformReadback;
+	
 };

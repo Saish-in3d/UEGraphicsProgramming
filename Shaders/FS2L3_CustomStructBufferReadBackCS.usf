@@ -1,0 +1,58 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+struct FTransformHLSL
+{
+	float3 location;
+
+	float3 Rotation;
+
+	float3 Scale;
+};
+
+
+float Deltatime;
+RWStructuredBuffer<FTransformHLSL> FS2L3StructDataBufferOutPut;
+
+
+/*Returns pseudo random number in range 0 <= x < 1 */
+//Returns random value from 0-1
+float random(float value, float seed = 0.546){
+	float random = (frac(sin(value + seed) * 143758.5453));// + 1.0)/2.0;
+	return random;
+}
+
+//Returns random value from 0-1
+float2 random2(float value){
+	return float2(
+		random(value, 3.9812),
+		random(value, 7.1536)
+	);
+}
+
+float3 random3(float value){
+	return float3(
+		random(value, 3.9812),
+		random(value, 7.1536),
+		random(value, 5.7241)
+	);
+}
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS2L3_CustomStructBufferReadBackCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	
+	float3 SinDir = normalize(random3(DispatchThreadId.x) - 0.5);
+	float3 Vec = normalize(random3(DispatchThreadId.x + 7.1393) - 0.5);
+	float3 CosDir = normalize(cross(SinDir, Vec));
+
+	float ScaledTime = Deltatime * 0.5 + random(DispatchThreadId.x) * 712.131234;
+
+	float3 Pos = SinDir * sin(ScaledTime) + CosDir * cos(ScaledTime);
+
+	FS2L3StructDataBufferOutPut[DispatchThreadId.x].location = Pos * 2;
+	FS2L3StructDataBufferOutPut[DispatchThreadId.x].Rotation = float3(0.f,0.f,0.f);
+	FS2L3StructDataBufferOutPut[DispatchThreadId.x].Scale = float3(1.f,1.f,1.f);
+	
+}

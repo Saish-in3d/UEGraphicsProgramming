@@ -2,6 +2,7 @@
 
 
 #include "Actors/HISMActor.h"
+#include "S2_ExternalDataBasicShaders.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 
 // Sets default values
@@ -17,6 +18,8 @@ AHISMActor::AHISMActor()
 	HISM->SetMobility(EComponentMobility::Static);
 	HISM->NumCustomDataFloats = 0;
 	
+	StarTransformReadback = MakeUnique<FRHIGPUBufferReadback>(TEXT("StarTransformReadback"));
+	
 }
 
 // Called when the game starts or when spawned
@@ -24,19 +27,22 @@ void AHISMActor::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	
+
+	
 }
 
 bool AHISMActor::InitHISM(int instanceCount)
 {
 	if (!HISM->GetStaticMesh())
 	{
-		if (!StaticMesh){return true;}
-		HISM->SetStaticMesh(StaticMesh);
+		if (!HISMStaticMesh){return true;}
+		
+		HISM->SetStaticMesh(HISMStaticMesh);
 	}
 	
 	HISM->ClearInstances();
-
-	const int32 InstanceCount = 1000;
+	
 	const float Spacing = 100.f;
 
 	for (int32 i = 0; i < InstanceCount; ++i)
@@ -58,6 +64,8 @@ bool AHISMActor::InitHISM(int instanceCount)
 		
 		
 	}
+	
+	TransformsArray.Reserve(InstanceCount);
 	return false;
 }
 
@@ -86,7 +94,17 @@ void AHISMActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
+	
+	
+	FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(DeltaTime,
+	TransformsArray,
+		InstanceCount,
+	StarTransformReadback
+		);
+	
+	
+	
 	//Switch cal shader get transform array and use UpdateHISMTransforms() to update locations
-
+	UpdateHISMTransforms(TransformsArray);
 }
 

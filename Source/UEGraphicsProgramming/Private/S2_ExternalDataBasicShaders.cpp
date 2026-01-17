@@ -100,13 +100,13 @@ IMPLEMENT_GLOBAL_SHADER(FS2L2_CustomStructBufferCS, "/Plugins/UEGraphicsProgramm
 						"FS2L2_CustomStructBufferCS", SF_Compute);
 
 void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTarget2D* OutputRenderTarget,
-	const float inDeltatime, TArray<FCircleData> inCircleDatBuffer)
+                                        const float inDeltatime, TArray<FCircleData> inCircleDatBuffer, int CircleCount)
 {
 	
 	
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
-		[OutputRenderTarget,inDeltatime,inCircleDatBuffer](FRHICommandListImmediate& RHICmdList)
+		[OutputRenderTarget,inDeltatime,inCircleDatBuffer,CircleCount](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//Getting new graph builder each frame
@@ -145,7 +145,8 @@ void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTar
 			TShaderMapRef<FS2L2_CustomStructBufferCS> FS2L2_ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 			
 			//Setting up Group Count
-			FIntVector GroupCount = FIntVector(1,1,1);
+			FIntVector GroupCount = FIntVector(FMath::DivideAndRoundUp(CircleCount, ThreadsX),
+																										1,1);
 			
 			//Actually dispatching the shader
 			
@@ -166,4 +167,141 @@ void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTar
 	
 	
 }
-//S}
+
+
+IMPLEMENT_GLOBAL_SHADER(FS2L3_CustomStructBufferReadBackCS, "/Plugins/UEGraphicsProgramming/FS2L3_CustomStructBufferReadBackCS.usf",
+						"FS2L3_CustomStructBufferReadBackCS", SF_Compute);
+
+void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
+                                                                               TArray<FTransform>& StarTransformsArray, 
+                                                                               const int inStarCount, 
+                                                                               TUniquePtr<FRHIGPUBufferReadback>&
+                                                                               inFRHIGPUBufferReadback)
+{
+	
+	ENQUEUE_RENDER_COMMAND(FS2L3_CustomStructBufferReadBackCSRun)(
+		[inDeltatime,inStarCount,&inFRHIGPUBufferReadback]
+		(FRHICommandListImmediate& RHICmdList)
+		{
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+			
+			//Creating GPU RDG buffer desc
+			
+			const FRDGBufferDesc StarTransformsGPUBufferDesc = FRDGBufferDesc::CreateBufferDesc(
+																			sizeof(FTransform),
+																			inStarCount);
+			
+			//Creating GPU RDG buffer Ref
+			const FRDGBufferRef StarTransformsGPUBuffer = GraphBuilder.CreateBuffer(StarTransformsGPUBufferDesc,
+																				TEXT("StarTransformsGPUBuffer"));				
+			
+			//Making GPU RDG buffer Ref as UAV
+			const FRDGBufferUAVRef StarTransformsGPUBufferUAV = GraphBuilder.CreateUAV(StarTransformsGPUBuffer);
+			
+			//ShaderParameterSetup
+			FS2L3_CustomStructBufferReadBackCS::FParameters* FS2L3_Parameters = GraphBuilder.AllocParameters<
+				FS2L3_CustomStructBufferReadBackCS::FParameters>();
+			
+			//Setting actual parameters
+			FS2L3_Parameters->FS2L3StructDataBufferOutPut =  StarTransformsGPUBufferUAV;
+			FS2L3_Parameters->Deltatime = inDeltatime;
+			
+			//Initialising compute shader object
+			TShaderMapRef<FS2L3_CustomStructBufferReadBackCS> FS2L3_ComputeShader(GetGlobalShaderMap(
+																								GMaxRHIFeatureLevel));
+			
+			//Setting up Group Count
+			FIntVector GroupCount = FIntVector(FMath::DivideAndRoundUp(inStarCount, ThreadsX),
+																										1,1);
+			
+			//Actually dispatching the shader (at the end of execution output of shader will be stored in UAV)
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("FS2L3"),
+				FS2L3_ComputeShader,
+				FS2L3_Parameters,
+				GroupCount
+				);
+			
+			
+			
+			// preparing StarTransformsGPUBuffer for cpu readback by adding it to 
+			// inFRHIGPUBufferReadback (stagging readback buffer queue) this buffer is visible to cpu memory
+			//Even tho gpu memory is visible to cpu but copying it before GPU finish its task will create desync issues
+			//Large size data can take more than one 1 frame time for actual readback to cpu
+			//Below code creates a copy of the buffer and creates a sync fence which we can poll (check) on render thread
+			//to make sure that the GPU operation on that buffer is complete
+			GraphBuilder.AddPass(
+			RDG_EVENT_NAME("Readback"),
+			ERDGPassFlags::None,
+			[ inFRHIGPUBufferReadback,StarTransformsGPUBuffer](FRHICommandListImmediate& RHICmdList)
+			{
+				if (!inFRHIGPUBufferReadback) return;
+				
+				if (!StarTransformsGPUBuffer) return;
+				
+				//ensure(!inFRHIGPUBufferReadback.IsValid());
+				
+				
+				
+				
+				
+				
+				
+				
+				inFRHIGPUBufferReadback->EnqueueCopy(
+					RHICmdList,
+					StarTransformsGPUBuffer->GetRHI()
+				);
+			});
+				
+				GraphBuilder.Execute();
+			
+			
+		});
+	
+	
+	
+	//
+	ENQUEUE_RENDER_COMMAND(PollReadback)(
+	[ inStarCount,&inFRHIGPUBufferReadback,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
+{
+	//Continously polling inFRHIGPUBufferReadback (stagging readback buffer queue) on render thread
+	if (!inFRHIGPUBufferReadback->IsReady())
+		return;
+
+	//Locking Gpu buffer for readback.
+	const size_t NumBytes = sizeof(FTransform) * inStarCount;
+	void* Data = inFRHIGPUBufferReadback->Lock(NumBytes);
+
+	//Init render thread staging CPU data array
+	TArray<FTransform> CPUTransforms_RenderThread;
+	CPUTransforms_RenderThread.SetNumUninitialized(inStarCount);
+		
+	//Copying the data to render thread staging array
+	FMemory::Memcpy(CPUTransforms_RenderThread.GetData(), Data, NumBytes);
+
+	//Now our copy is done we will unloack and release GPU stagging buffer
+	inFRHIGPUBufferReadback->Unlock();
+
+	// Copying Render thread data to Game thread for further application
+	AsyncTask(ENamedThreads::GameThread, [ CPUTransforms = MoveTemp(CPUTransforms_RenderThread),&StarTransformsArray]()
+	{
+		StarTransformsArray = CPUTransforms;
+	});
+});
+	
+	
+	
+	
+	
+	
+	
+	
+}
+
+
+
+
