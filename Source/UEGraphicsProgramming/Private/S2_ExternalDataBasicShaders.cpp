@@ -179,6 +179,9 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
                                                                                inFRHIGPUBufferReadback)
 {
 	
+	
+	/*FRDGBufferRef StarTransformsGPUBuffer;*/
+	
 	ENQUEUE_RENDER_COMMAND(FS2L3_CustomStructBufferReadBackCSRun)(
 		[inDeltatime,inStarCount,&inFRHIGPUBufferReadback]
 		(FRHICommandListImmediate& RHICmdList)
@@ -189,12 +192,12 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			
 			//Creating GPU RDG buffer desc
 			
-			const FRDGBufferDesc StarTransformsGPUBufferDesc = FRDGBufferDesc::CreateBufferDesc(
+			FRDGBufferDesc StarTransformsGPUBufferDesc = FRDGBufferDesc::CreateBufferDesc(
 																			sizeof(FTransform),
 																			inStarCount);
 			
 			//Creating GPU RDG buffer Ref
-			const FRDGBufferRef StarTransformsGPUBuffer = GraphBuilder.CreateBuffer(StarTransformsGPUBufferDesc,
+			FRDGBufferRef StarTransformsGPUBuffer = GraphBuilder.CreateBuffer(StarTransformsGPUBufferDesc,
 																				TEXT("StarTransformsGPUBuffer"));				
 			
 			//Making GPU RDG buffer Ref as UAV
@@ -233,7 +236,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			//Large size data can take more than one 1 frame time for actual readback to cpu
 			//Below code creates a copy of the buffer and creates a sync fence which we can poll (check) on render thread
 			//to make sure that the GPU operation on that buffer is complete
-			GraphBuilder.AddPass(
+			/*GraphBuilder.AddPass(
 			RDG_EVENT_NAME("Readback"),
 			ERDGPassFlags::None,
 			[ inFRHIGPUBufferReadback,StarTransformsGPUBuffer](FRHICommandListImmediate& RHICmdList)
@@ -248,20 +251,21 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 				
 				
 				
-				
+				AddEnqueueCopyPass
 				
 				
 				inFRHIGPUBufferReadback->EnqueueCopy(
 					RHICmdList,
 					StarTransformsGPUBuffer->GetRHI()
 				);
-			});
+			});*/
 				
 				GraphBuilder.Execute();
 			
 			
 		});
 	
+	//EnqueueGPUReadback(inFRHIGPUBufferReadback,StarTransformsGPUBuffer);
 	
 	
 	//
@@ -299,6 +303,44 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 	
 	
 	
+	
+}
+
+bool FS2L3_CustomStructBufferReadBackCS::IsPendingReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const
+{
+	
+	return !inFRHIGPUBufferReadback.IsValid();
+	
+}
+
+void FS2L3_CustomStructBufferReadBackCS::EnqueueGPUReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback, FRDGBufferRef& inFRDGBufferRef)
+{
+	ensure(inFRHIGPUBufferReadback.IsValid());
+	
+	static const FName ReadbackName = TEXT("TransformRT_Buffer");
+	
+	ENQUEUE_RENDER_COMMAND(EnqueueGPUReadback)(
+		[&inFRHIGPUBufferReadback,inFRDGBufferRef](FRHICommandListImmediate& RHICmdList)
+		{
+			inFRHIGPUBufferReadback.Reset(new FRHIGPUBufferReadback(ReadbackName));
+			if (inFRHIGPUBufferReadback.IsValid() && inFRDGBufferRef->GetSize())
+			{
+				inFRHIGPUBufferReadback->EnqueueCopy(RHICmdList, inFRDGBufferRef->GetRHI());
+				
+			}
+			
+		}
+	);
+	
+	
+	
+	
+}
+
+bool FS2L3_CustomStructBufferReadBackCS::IsGPUReadbackFinished(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const
+{
+	
+	return !IsPendingReadback(inFRHIGPUBufferReadback) && inFRHIGPUBufferReadback->IsReady();
 	
 }
 

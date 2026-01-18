@@ -135,5 +135,18 @@ public:
 	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime, TArray<FTransform>& StarTransformsArray,
 	                                const int inStarCount, TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback);
 	
+	
+	
+private:
+	
+	bool IsPendingReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const;
+	static void  EnqueueGPUReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback, FRDGBufferRef& inFRDGBufferRef);
+	bool IsGPUReadbackFinished(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const;
+	void EnqueueDataReadback();
+	bool IsDataReadbackPending() const;
+	bool IsDataReadbackFinished() const;
+	void ResetGPUReadback();
+	void InitialiseProfileBuffer(const FName& ProfileName);
+	
 };
 
