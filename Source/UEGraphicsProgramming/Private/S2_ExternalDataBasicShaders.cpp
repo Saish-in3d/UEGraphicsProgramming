@@ -178,12 +178,13 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
                                                                                TUniquePtr<FRHIGPUBufferReadback>&
                                                                                inFRHIGPUBufferReadback)
 {
-	
+	if (!inFRHIGPUBufferReadback.IsValid()){return;}
+	FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer = inFRHIGPUBufferReadback.Get();
 	
 	/*FRDGBufferRef StarTransformsGPUBuffer;*/
 	
 	ENQUEUE_RENDER_COMMAND(FS2L3_CustomStructBufferReadBackCSRun)(
-		[inDeltatime,inStarCount,&inFRHIGPUBufferReadback]
+		[inDeltatime,inStarCount,FRHIGPUBufferReadbackPointer]
 		(FRHICommandListImmediate& RHICmdList)
 		{
 			//Getting new graph builder each frame
@@ -192,9 +193,9 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			
 			//Creating GPU RDG buffer desc
 			
-			FRDGBufferDesc StarTransformsGPUBufferDesc = FRDGBufferDesc::CreateBufferDesc(
-																			sizeof(FTransform),
-																			inStarCount);
+			FRDGBufferDesc StarTransformsGPUBufferDesc = FRDGBufferDesc::CreateByteAddressDesc(
+	sizeof(FTransform) * inStarCount);
+
 			
 			//Creating GPU RDG buffer Ref
 			FRDGBufferRef StarTransformsGPUBuffer = GraphBuilder.CreateBuffer(StarTransformsGPUBufferDesc,
@@ -202,6 +203,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			
 			//Making GPU RDG buffer Ref as UAV
 			const FRDGBufferUAVRef StarTransformsGPUBufferUAV = GraphBuilder.CreateUAV(StarTransformsGPUBuffer);
+			AddClearUAVPass(GraphBuilder, StarTransformsGPUBufferUAV, 0);
 			
 			//ShaderParameterSetup
 			FS2L3_CustomStructBufferReadBackCS::FParameters* FS2L3_Parameters = GraphBuilder.AllocParameters<
@@ -219,6 +221,9 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			FIntVector GroupCount = FIntVector(FMath::DivideAndRoundUp(inStarCount, ThreadsX),
 																										1,1);
 			
+			/*{
+				RDG_EVENT_SCOPE(GraphBuilder, "FS2L3_SCOPE");
+			}*/
 			//Actually dispatching the shader (at the end of execution output of shader will be stored in UAV)
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
@@ -228,7 +233,8 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 				GroupCount
 				);
 			
-			
+			if (!StarTransformsGPUBuffer){return;}
+			AddEnqueueCopyPass(GraphBuilder, FRHIGPUBufferReadbackPointer, StarTransformsGPUBuffer, /*OffsetBytes=*/0);
 			
 			// preparing StarTransformsGPUBuffer for cpu readback by adding it to 
 			// inFRHIGPUBufferReadback (stagging readback buffer queue) this buffer is visible to cpu memory
@@ -260,6 +266,8 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 				);
 			});*/
 				
+				//GraphBuilder.SetFlushResourcesRHI();
+
 				GraphBuilder.Execute();
 			
 			
@@ -267,7 +275,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 	
 	//EnqueueGPUReadback(inFRHIGPUBufferReadback,StarTransformsGPUBuffer);
 	
-	
+	return;
 	//
 	ENQUEUE_RENDER_COMMAND(PollReadback)(
 	[ inStarCount,&inFRHIGPUBufferReadback,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
