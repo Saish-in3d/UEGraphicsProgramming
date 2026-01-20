@@ -116,7 +116,7 @@ public:
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 	
-	static constexpr int ThreadsX = 32;
+	static constexpr int ThreadsX = 64;
 	
 	// Define environment variables used by compute shader
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
@@ -134,6 +134,10 @@ public:
 	//Shader run function
 	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime, TArray<FTransform>& StarTransformsArray,
 	                                const int inStarCount, TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback);
+	
+	
+	static void PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount,
+		FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer);
 	
 	
 	

@@ -172,6 +172,37 @@ void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTar
 IMPLEMENT_GLOBAL_SHADER(FS2L3_CustomStructBufferReadBackCS, "/Plugins/UEGraphicsProgramming/FS2L3_CustomStructBufferReadBackCS.usf",
 						"FS2L3_CustomStructBufferReadBackCS", SF_Compute);
 
+void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount, FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer)
+{
+	ENQUEUE_RENDER_COMMAND(PollReadback)(
+		[ inStarCount,FRHIGPUBufferReadbackPointer,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
+		{
+			//Continously polling inFRHIGPUBufferReadback (stagging readback buffer queue) on render thread
+			if (!FRHIGPUBufferReadbackPointer->IsReady()){return;}
+		
+
+			//Locking Gpu buffer for readback.
+			const size_t NumBytes = sizeof(FTransform) * inStarCount;
+			void* Data = FRHIGPUBufferReadbackPointer->Lock(NumBytes);
+
+			//Init render thread staging CPU data array
+			TArray<FTransform> CPUTransforms_RenderThread;
+			CPUTransforms_RenderThread.SetNumUninitialized(inStarCount);
+		
+			//Copying the data to render thread staging array
+			FMemory::Memcpy(CPUTransforms_RenderThread.GetData(), Data, NumBytes);
+
+			//Now our copy is done we will unloack and release GPU stagging buffer
+			FRHIGPUBufferReadbackPointer->Unlock();
+
+			// Copying Render thread data to Game thread for further application
+			AsyncTask(ENamedThreads::GameThread, [ CPUTransforms = MoveTemp(CPUTransforms_RenderThread),&StarTransformsArray]()
+			{
+				StarTransformsArray = CPUTransforms;
+			});
+		});
+}
+
 void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
                                                                                TArray<FTransform>& StarTransformsArray, 
                                                                                const int inStarCount, 
@@ -217,13 +248,11 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			TShaderMapRef<FS2L3_CustomStructBufferReadBackCS> FS2L3_ComputeShader(GetGlobalShaderMap(
 																								GMaxRHIFeatureLevel));
 			
-			//Setting up Group Count
-			FIntVector GroupCount = FIntVector(FMath::DivideAndRoundUp(inStarCount, ThreadsX),
-																										1,1);
+			int GroupCountX = (inStarCount + ThreadsX - 1)/ThreadsX;
 			
-			/*{
-				RDG_EVENT_SCOPE(GraphBuilder, "FS2L3_SCOPE");
-			}*/
+			//Setting up Group Count
+			FIntVector GroupCount = FIntVector(GroupCountX,1,1);
+			
 			//Actually dispatching the shader (at the end of execution output of shader will be stored in UAV)
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,
@@ -243,30 +272,19 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			//Below code creates a copy of the buffer and creates a sync fence which we can poll (check) on render thread
 			//to make sure that the GPU operation on that buffer is complete
 			/*GraphBuilder.AddPass(
-			RDG_EVENT_NAME("Readback"),
+			RDG_EVENT_NAME("FS2L3_Readback"),
 			ERDGPassFlags::None,
-			[ inFRHIGPUBufferReadback,StarTransformsGPUBuffer](FRHICommandListImmediate& RHICmdList)
+			[ FRHIGPUBufferReadbackPointer,StarTransformsGPUBuffer](FRHICommandListImmediate& RHICmdList)
 			{
-				if (!inFRHIGPUBufferReadback) return;
+				if (!FRHIGPUBufferReadbackPointer) return;
 				
 				if (!StarTransformsGPUBuffer) return;
 				
-				//ensure(!inFRHIGPUBufferReadback.IsValid());
-				
-				
-				
-				
-				
-				AddEnqueueCopyPass
-				
-				
-				inFRHIGPUBufferReadback->EnqueueCopy(
+				FRHIGPUBufferReadbackPointer->EnqueueCopy(
 					RHICmdList,
 					StarTransformsGPUBuffer->GetRHI()
 				);
 			});*/
-				
-				//GraphBuilder.SetFlushResourcesRHI();
 
 				GraphBuilder.Execute();
 			
@@ -275,35 +293,9 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 	
 	//EnqueueGPUReadback(inFRHIGPUBufferReadback,StarTransformsGPUBuffer);
 	
-	return;
+	//return;
 	//
-	ENQUEUE_RENDER_COMMAND(PollReadback)(
-	[ inStarCount,&inFRHIGPUBufferReadback,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
-{
-	//Continously polling inFRHIGPUBufferReadback (stagging readback buffer queue) on render thread
-	if (!inFRHIGPUBufferReadback->IsReady())
-		return;
-
-	//Locking Gpu buffer for readback.
-	const size_t NumBytes = sizeof(FTransform) * inStarCount;
-	void* Data = inFRHIGPUBufferReadback->Lock(NumBytes);
-
-	//Init render thread staging CPU data array
-	TArray<FTransform> CPUTransforms_RenderThread;
-	CPUTransforms_RenderThread.SetNumUninitialized(inStarCount);
-		
-	//Copying the data to render thread staging array
-	FMemory::Memcpy(CPUTransforms_RenderThread.GetData(), Data, NumBytes);
-
-	//Now our copy is done we will unloack and release GPU stagging buffer
-	inFRHIGPUBufferReadback->Unlock();
-
-	// Copying Render thread data to Game thread for further application
-	AsyncTask(ENamedThreads::GameThread, [ CPUTransforms = MoveTemp(CPUTransforms_RenderThread),&StarTransformsArray]()
-	{
-		StarTransformsArray = CPUTransforms;
-	});
-});
+	//PollReadBackandDownloadtoGameThread(StarTransformsArray, inStarCount, FRHIGPUBufferReadbackPointer);
 	
 	
 	

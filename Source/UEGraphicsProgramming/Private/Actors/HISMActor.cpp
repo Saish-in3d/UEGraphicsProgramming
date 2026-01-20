@@ -18,7 +18,7 @@ AHISMActor::AHISMActor()
 	HISM->SetMobility(EComponentMobility::Static);
 	HISM->NumCustomDataFloats = 0;
 	
-	StarTransformReadback = MakeUnique<FRHIGPUBufferReadback>(TEXT("StarTransformReadback"));
+	
 	
 }
 
@@ -27,7 +27,13 @@ void AHISMActor::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	StarTransformReadback = MakeUnique<FRHIGPUBufferReadback>(TEXT("StarTransformReadback"));
 	
+	FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(1,
+	TransformsArray,
+		InstanceCount,
+	StarTransformReadback
+		);
 
 	
 }
@@ -87,6 +93,8 @@ void AHISMActor::OnConstruction(const FTransform& Transform)
 	
 	InitHISM(InstanceCount);
 	
+	
+	
 }
 
 // Called every frame
@@ -96,12 +104,9 @@ void AHISMActor::Tick(float DeltaTime)
 	
 	
 	
-	FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(DeltaTime,
-	TransformsArray,
-		InstanceCount,
-	StarTransformReadback
-		);
 	
+	
+	FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TransformsArray,InstanceCount,StarTransformReadback.Get());
 	
 	
 	//Switch cal shader get transform array and use UpdateHISMTransforms() to update locations
