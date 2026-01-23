@@ -172,7 +172,7 @@ void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTar
 IMPLEMENT_GLOBAL_SHADER(FS2L3_CustomStructBufferReadBackCS, "/Plugins/UEGraphicsProgramming/FS2L3_CustomStructBufferReadBackCS.usf",
 						"FS2L3_CustomStructBufferReadBackCS", SF_Compute);
 
-void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount, FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer)
+void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TArray<FVector3f>& StarTransformsArray, const int inStarCount, FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer)
 {
 	ENQUEUE_RENDER_COMMAND(PollReadback)(
 		[ inStarCount,FRHIGPUBufferReadbackPointer,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
@@ -182,11 +182,11 @@ void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TAr
 		
 
 			//Locking Gpu buffer for readback.
-			const size_t NumBytes = sizeof(FTransform) * inStarCount;
+			const size_t NumBytes = sizeof(FVector3f) * inStarCount;
 			void* Data = FRHIGPUBufferReadbackPointer->Lock(NumBytes);
 
 			//Init render thread staging CPU data array
-			TArray<FTransform> CPUTransforms_RenderThread;
+			TArray<FVector3f> CPUTransforms_RenderThread;
 			CPUTransforms_RenderThread.SetNumUninitialized(inStarCount);
 		
 			//Copying the data to render thread staging array
@@ -204,7 +204,7 @@ void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TAr
 }
 
 void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
-                                                                               TArray<FTransform>& StarTransformsArray, 
+                                                                               TArray<FVector3f>& StarTransformsArray, 
                                                                                const int inStarCount, 
                                                                                TUniquePtr<FRHIGPUBufferReadback>&
                                                                                inFRHIGPUBufferReadback)
@@ -251,7 +251,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			int GroupCountX = (inStarCount + ThreadsX - 1)/ThreadsX;
 			
 			//Setting up Group Count
-			FIntVector GroupCount = FIntVector(GroupCountX,1,1);
+			FIntVector GroupCount = FIntVector(1,1,1);
 			
 			//Actually dispatching the shader (at the end of execution output of shader will be stored in UAV)
 			FComputeShaderUtils::AddPass(
@@ -263,84 +263,16 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 				);
 			
 			if (!StarTransformsGPUBuffer){return;}
-			AddEnqueueCopyPass(GraphBuilder, FRHIGPUBufferReadbackPointer, StarTransformsGPUBuffer, /*OffsetBytes=*/0);
-			
 			// preparing StarTransformsGPUBuffer for cpu readback by adding it to 
-			// inFRHIGPUBufferReadback (stagging readback buffer queue) this buffer is visible to cpu memory
+			// FRHIGPUBufferReadbackPointer (stagging readback buffer queue) this buffer is visible to cpu memory
 			//Even tho gpu memory is visible to cpu but copying it before GPU finish its task will create desync issues
 			//Large size data can take more than one 1 frame time for actual readback to cpu
-			//Below code creates a copy of the buffer and creates a sync fence which we can poll (check) on render thread
+			//Below func creates a copy of the buffer and creates a sync fence which we can poll (check) on render thread
 			//to make sure that the GPU operation on that buffer is complete
-			/*GraphBuilder.AddPass(
-			RDG_EVENT_NAME("FS2L3_Readback"),
-			ERDGPassFlags::None,
-			[ FRHIGPUBufferReadbackPointer,StarTransformsGPUBuffer](FRHICommandListImmediate& RHICmdList)
-			{
-				if (!FRHIGPUBufferReadbackPointer) return;
-				
-				if (!StarTransformsGPUBuffer) return;
-				
-				FRHIGPUBufferReadbackPointer->EnqueueCopy(
-					RHICmdList,
-					StarTransformsGPUBuffer->GetRHI()
-				);
-			});*/
+			AddEnqueueCopyPass(GraphBuilder, FRHIGPUBufferReadbackPointer, StarTransformsGPUBuffer, /*OffsetBytes=*/0);
+			GraphBuilder.Execute();
 
-				GraphBuilder.Execute();
-			
-			
 		});
-	
-	//EnqueueGPUReadback(inFRHIGPUBufferReadback,StarTransformsGPUBuffer);
-	
-	//return;
-	//
-	//PollReadBackandDownloadtoGameThread(StarTransformsArray, inStarCount, FRHIGPUBufferReadbackPointer);
-	
-	
-	
-	
-	
-	
-	
-	
-}
-
-bool FS2L3_CustomStructBufferReadBackCS::IsPendingReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const
-{
-	
-	return !inFRHIGPUBufferReadback.IsValid();
-	
-}
-
-void FS2L3_CustomStructBufferReadBackCS::EnqueueGPUReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback, FRDGBufferRef& inFRDGBufferRef)
-{
-	ensure(inFRHIGPUBufferReadback.IsValid());
-	
-	static const FName ReadbackName = TEXT("TransformRT_Buffer");
-	
-	ENQUEUE_RENDER_COMMAND(EnqueueGPUReadback)(
-		[&inFRHIGPUBufferReadback,inFRDGBufferRef](FRHICommandListImmediate& RHICmdList)
-		{
-			inFRHIGPUBufferReadback.Reset(new FRHIGPUBufferReadback(ReadbackName));
-			if (inFRHIGPUBufferReadback.IsValid() && inFRDGBufferRef->GetSize())
-			{
-				inFRHIGPUBufferReadback->EnqueueCopy(RHICmdList, inFRDGBufferRef->GetRHI());
-				
-			}
-			
-		}
-	);
-	
-	
-	
-	
-}
-
-bool FS2L3_CustomStructBufferReadBackCS::IsGPUReadbackFinished(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const
-{
-	
-	return !IsPendingReadback(inFRHIGPUBufferReadback) && inFRHIGPUBufferReadback->IsReady();
 	
 }
 

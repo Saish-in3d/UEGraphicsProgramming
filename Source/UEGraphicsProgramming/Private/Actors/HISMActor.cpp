@@ -35,7 +35,7 @@ void AHISMActor::BeginPlay()
 	StarTransformReadback
 		);
 
-	
+	//StarTransformReadback.IsValid();
 }
 
 bool AHISMActor::InitHISM(int instanceCount)
@@ -71,12 +71,13 @@ bool AHISMActor::InitHISM(int instanceCount)
 		
 	}
 	
-	TransformsArray.Reserve(InstanceCount);
+	//TransformsArray.Reserve(InstanceCount);
 	return false;
 }
 
 void AHISMActor::UpdateHISMTransforms(TArray<FTransform> inTransformsArray)
 {
+	
 	HISM->BatchUpdateInstancesTransforms(
 		0,
 		inTransformsArray,
@@ -110,6 +111,7 @@ void AHISMActor::Tick(float DeltaTime)
 	
 	
 	//Switch cal shader get transform array and use UpdateHISMTransforms() to update locations
-	UpdateHISMTransforms(TransformsArray);
+	if (TransformsArray.IsEmpty()){return;}
+	//UpdateHISMTransforms(TransformsArray);
 }
 

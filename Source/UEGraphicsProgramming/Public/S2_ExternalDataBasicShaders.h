@@ -107,7 +107,7 @@ public:
 	
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 	SHADER_PARAMETER(float, Deltatime)
-	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FTransform>,FS2L3StructDataBufferOutPut)
+	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector3f>,FS2L3StructDataBufferOutPut)
 	END_SHADER_PARAMETER_STRUCT()
 	
 	// Basic shader initialization
@@ -132,25 +132,16 @@ public:
 
 	
 	//Shader run function
-	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime, TArray<FTransform>& StarTransformsArray,
+	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime, TArray<FVector3f>& StarTransformsArray,
 	                                const int inStarCount, TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback);
 	
 	
-	static void PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount,
+	static void PollReadBackandDownloadtoGameThread(TArray<FVector3f>& StarTransformsArray, const int inStarCount,
 		FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer);
 	
 	
 	
 private:
-	
-	bool IsPendingReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const;
-	static void  EnqueueGPUReadback(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback, FRDGBufferRef& inFRDGBufferRef);
-	bool IsGPUReadbackFinished(TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback) const;
-	void EnqueueDataReadback();
-	bool IsDataReadbackPending() const;
-	bool IsDataReadbackFinished() const;
-	void ResetGPUReadback();
-	void InitialiseProfileBuffer(const FName& ProfileName);
 	
 };
 

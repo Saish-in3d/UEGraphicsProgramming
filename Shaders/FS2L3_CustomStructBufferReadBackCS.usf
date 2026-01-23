@@ -2,18 +2,8 @@
 #include "/Engine/Private/Common.ush"
 #include "/Engine/Private/ScreenPass.ush"
 
-struct FTransformHLSL
-{
-	float3 location;
-
-	float3 Rotation;
-
-	float3 Scale;
-};
-
-
 float Deltatime;
-RWStructuredBuffer<FTransformHLSL> FS2L3StructDataBufferOutPut;
+shared RWStructuredBuffer<float3> FS2L3StructDataBufferOutPut;
 
 
 /*Returns pseudo random number in range 0 <= x < 1 */
@@ -51,8 +41,6 @@ void FS2L3_CustomStructBufferReadBackCS(uint2 DispatchThreadId : SV_DispatchThre
 
 	float3 Pos = SinDir * sin(ScaledTime) + CosDir * cos(ScaledTime);
 
-	FS2L3StructDataBufferOutPut[DispatchThreadId.x].location = Pos * 2;
-	FS2L3StructDataBufferOutPut[DispatchThreadId.x].Rotation = float3(0.f,0.f,0.f);
-	FS2L3StructDataBufferOutPut[DispatchThreadId.x].Scale = float3(1.f,1.f,1.f);
+	FS2L3StructDataBufferOutPut[DispatchThreadId.x] = Pos;
 	
 }
