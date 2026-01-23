@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "RHIGPUReadback.h"
+#include "Containers/Queue.h"
 #include "HISMActor.generated.h"
 
 UCLASS()
@@ -45,10 +46,13 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
-	TArray<FVector3f> TransformsArray;
+	TArray<FTransform> TransformsArray;
 	
 private:
 
+	
+	TQueue<TUniquePtr<FRHIGPUBufferReadback>> GPUBufferReadbackQueue;
+	
 	TUniquePtr<FRHIGPUBufferReadback> StarTransformReadback;
 	
 };

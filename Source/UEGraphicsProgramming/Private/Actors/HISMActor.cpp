@@ -29,11 +29,7 @@ void AHISMActor::BeginPlay()
 	
 	StarTransformReadback = MakeUnique<FRHIGPUBufferReadback>(TEXT("StarTransformReadback"));
 	
-	FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(1,
-	TransformsArray,
-		InstanceCount,
-	StarTransformReadback
-		);
+	
 
 	//StarTransformReadback.IsValid();
 }
@@ -103,15 +99,22 @@ void AHISMActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
+	const float timee =  this->GetGameTimeSinceCreation();
+	
+	FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(timee,
+	                                                                          InstanceCount,
+	                                                                          GPUBufferReadbackQueue);
 	
 	
 	
-	
-	FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TransformsArray,InstanceCount,StarTransformReadback.Get());
+	FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TransformsArray,
+	                                                                        InstanceCount,GPUBufferReadbackQueue);
 	
 	
 	//Switch cal shader get transform array and use UpdateHISMTransforms() to update locations
 	if (TransformsArray.IsEmpty()){return;}
-	//UpdateHISMTransforms(TransformsArray);
+	if (!TransformsArray.GetData()){return;}
+	UpdateHISMTransforms(TransformsArray);
+	TransformsArray.Empty();
 }
 

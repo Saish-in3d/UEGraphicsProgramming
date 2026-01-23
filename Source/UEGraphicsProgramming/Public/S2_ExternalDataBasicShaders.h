@@ -7,6 +7,18 @@
 #include "ShaderParameterStruct.h"
 #include "RHIGPUReadback.h"
 #include "CommonStructs.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Containers/Queue.h"
+
 
 
 //Shader declaration
@@ -132,12 +144,13 @@ public:
 
 	
 	//Shader run function
-	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime, TArray<FVector3f>& StarTransformsArray,
-	                                const int inStarCount, TUniquePtr<FRHIGPUBufferReadback>& inFRHIGPUBufferReadback);
+	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
+	                                                  const int inStarCount,
+	                                                  TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
 	
 	
-	static void PollReadBackandDownloadtoGameThread(TArray<FVector3f>& StarTransformsArray, const int inStarCount,
-		FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer);
+	static void PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount,
+	                                                TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
 	
 	
 	

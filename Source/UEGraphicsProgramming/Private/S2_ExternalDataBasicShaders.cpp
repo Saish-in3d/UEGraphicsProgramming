@@ -4,6 +4,8 @@
 #include "S2_ExternalDataBasicShaders.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
 #include "Engine/TextureRenderTarget2D.h"
 
 
@@ -172,13 +174,31 @@ void FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(UTextureRenderTar
 IMPLEMENT_GLOBAL_SHADER(FS2L3_CustomStructBufferReadBackCS, "/Plugins/UEGraphicsProgramming/FS2L3_CustomStructBufferReadBackCS.usf",
 						"FS2L3_CustomStructBufferReadBackCS", SF_Compute);
 
-void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TArray<FVector3f>& StarTransformsArray, const int inStarCount, FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer)
+void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount, TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::
+	                                                                             Spsc>&
+                                                                             inFRHIGPUBufferReadbackQueue)
 {
+
+	
 	ENQUEUE_RENDER_COMMAND(PollReadback)(
-		[ inStarCount,FRHIGPUBufferReadbackPointer,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
+		[ inStarCount,&inFRHIGPUBufferReadbackQueue,&StarTransformsArray](FRHICommandListImmediate& RHICmdList)
 		{
+			
+			TUniquePtr<FRHIGPUBufferReadback> tempFRHIGPUBufferReadback;
+			
+			if(!inFRHIGPUBufferReadbackQueue.Dequeue(tempFRHIGPUBufferReadback)){return;}
+			
+			if (!tempFRHIGPUBufferReadback){return;}
+	
+			FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer = tempFRHIGPUBufferReadback.Get();
+			
+			
 			//Continously polling inFRHIGPUBufferReadback (stagging readback buffer queue) on render thread
-			if (!FRHIGPUBufferReadbackPointer->IsReady()){return;}
+			if (!FRHIGPUBufferReadbackPointer->IsReady())
+			{
+				inFRHIGPUBufferReadbackQueue.Enqueue(MoveTemp(tempFRHIGPUBufferReadback));
+				return;
+			}
 		
 
 			//Locking Gpu buffer for readback.
@@ -186,36 +206,54 @@ void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TAr
 			void* Data = FRHIGPUBufferReadbackPointer->Lock(NumBytes);
 
 			//Init render thread staging CPU data array
-			TArray<FVector3f> CPUTransforms_RenderThread;
-			CPUTransforms_RenderThread.SetNumUninitialized(inStarCount);
+			TArray<FVector3f> CPULocations_RenderThread;
+			CPULocations_RenderThread.SetNumUninitialized(inStarCount);
 		
 			//Copying the data to render thread staging array
-			FMemory::Memcpy(CPUTransforms_RenderThread.GetData(), Data, NumBytes);
+			FMemory::Memcpy(CPULocations_RenderThread.GetData(), Data, NumBytes);
 
 			//Now our copy is done we will unloack and release GPU stagging buffer
 			FRHIGPUBufferReadbackPointer->Unlock();
+			
+			TArray<FTransform> CPUTransforms_RenderThread;
+			
+			for (int i = 0; i < inStarCount; i++)
+			{
+				FTransform& trmpTransformRef = CPUTransforms_RenderThread.AddDefaulted_GetRef();
+				trmpTransformRef.SetRotation(FRotator::ZeroRotator.Quaternion());
+				trmpTransformRef.SetScale3D(FVector(1.0f, 1.0f, 1.0f));
+				trmpTransformRef.SetTranslation(FVector(CPULocations_RenderThread[i].X,
+					CPULocations_RenderThread[i].Y,
+					CPULocations_RenderThread[i].Z)*100.f);
+				
+				
+			}
+			
 
 			// Copying Render thread data to Game thread for further application
-			AsyncTask(ENamedThreads::GameThread, [ CPUTransforms = MoveTemp(CPUTransforms_RenderThread),&StarTransformsArray]()
+			AsyncTask(ENamedThreads::GameThread, [ CPUTransforms = MoveTemp(CPUTransforms_RenderThread),
+				&StarTransformsArray]()
 			{
 				StarTransformsArray = CPUTransforms;
 			});
 		});
+	
+	
 }
 
 void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
-                                                                               TArray<FVector3f>& StarTransformsArray, 
-                                                                               const int inStarCount, 
-                                                                               TUniquePtr<FRHIGPUBufferReadback>&
-                                                                               inFRHIGPUBufferReadback)
+                                                                               const int inStarCount,
+                            TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue)
 {
-	if (!inFRHIGPUBufferReadback.IsValid()){return;}
-	FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer = inFRHIGPUBufferReadback.Get();
+	TUniquePtr<FRHIGPUBufferReadback> tempFRHIGPUBufferReadback = MakeUnique <FRHIGPUBufferReadback>(
+		TEXT("FS2L3_CustomStructBuffer"));
 	
-	/*FRDGBufferRef StarTransformsGPUBuffer;*/
 	
+	if (!tempFRHIGPUBufferReadback.IsValid()){return;}
+	FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer = tempFRHIGPUBufferReadback.Get();
+	float Time_RT = inDeltatime;
 	ENQUEUE_RENDER_COMMAND(FS2L3_CustomStructBufferReadBackCSRun)(
-		[inDeltatime,inStarCount,FRHIGPUBufferReadbackPointer]
+		[Time_RT,inStarCount,FRHIGPUBufferReadbackPointer]
 		(FRHICommandListImmediate& RHICmdList)
 		{
 			//Getting new graph builder each frame
@@ -225,7 +263,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			//Creating GPU RDG buffer desc
 			
 			FRDGBufferDesc StarTransformsGPUBufferDesc = FRDGBufferDesc::CreateByteAddressDesc(
-	sizeof(FTransform) * inStarCount);
+																			sizeof(FVector3f) * inStarCount);
 
 			
 			//Creating GPU RDG buffer Ref
@@ -242,7 +280,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			
 			//Setting actual parameters
 			FS2L3_Parameters->FS2L3StructDataBufferOutPut =  StarTransformsGPUBufferUAV;
-			FS2L3_Parameters->Deltatime = inDeltatime;
+			FS2L3_Parameters->Deltatime = Time_RT;
 			
 			//Initialising compute shader object
 			TShaderMapRef<FS2L3_CustomStructBufferReadBackCS> FS2L3_ComputeShader(GetGlobalShaderMap(
@@ -251,7 +289,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 			int GroupCountX = (inStarCount + ThreadsX - 1)/ThreadsX;
 			
 			//Setting up Group Count
-			FIntVector GroupCount = FIntVector(1,1,1);
+			FIntVector GroupCount = FIntVector(GroupCountX,1,1);
 			
 			//Actually dispatching the shader (at the end of execution output of shader will be stored in UAV)
 			FComputeShaderUtils::AddPass(
@@ -274,6 +312,7 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 
 		});
 	
+	inFRHIGPUBufferReadbackQueue.Enqueue(MoveTemp(tempFRHIGPUBufferReadback));
 }
 
 

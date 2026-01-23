@@ -41,6 +41,6 @@ void FS2L3_CustomStructBufferReadBackCS(uint2 DispatchThreadId : SV_DispatchThre
 
 	float3 Pos = SinDir * sin(ScaledTime) + CosDir * cos(ScaledTime);
 
-	FS2L3StructDataBufferOutPut[DispatchThreadId.x] = Pos;
+	FS2L3StructDataBufferOutPut[DispatchThreadId.x] = Pos*2;
 	
 }
