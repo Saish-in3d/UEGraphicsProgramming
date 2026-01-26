@@ -7,16 +7,6 @@
 #include "ShaderParameterStruct.h"
 #include "RHIGPUReadback.h"
 #include "CommonStructs.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
-#include "Chaos/AABBTree.h"
 #include "Containers/Queue.h"
 
 
@@ -45,7 +35,8 @@ public:
 	}
 	
 	// Define environment variables used by compute shader
-	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+		FShaderCompilerEnvironment& OutEnvironment)
 	{
 		OutEnvironment.SetDefine(TEXT("THREADS_X"), 32);
 		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
@@ -101,8 +92,8 @@ public:
 		static TArray<FCircleData> InitCircleDataBuffer(int32 inTotalCircleCount = 32, int RenderTargetSize = 256);
 	
 		//Shader run function
-		static void FS2L2_CustomStructBufferCSRun(UTextureRenderTarget2D* OutputRenderTarget, const float inDeltatime, TArray<FCircleData> inCircleDatBuffer, int
-		                                          CircleCount);
+		static void FS2L2_CustomStructBufferCSRun(UTextureRenderTarget2D* OutputRenderTarget, const float inDeltatime,
+			TArray<FCircleData> inCircleDatBuffer, int CircleCount);
 	
 	};
 
@@ -146,11 +137,11 @@ public:
 	//Shader run function
 	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
 	                                                  const int inStarCount,
-	                                                  TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
+							TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
 	
 	
 	static void PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount,
-	                                                TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
+	                        TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
 	
 	
 	
@@ -158,3 +149,53 @@ private:
 	
 };
 
+//FS2L4_BasicNoiseCS
+class UEGRAPHICSPROGRAMMING_API FS2L4_BasicNoiseCS : public FGlobalShader
+{
+public:
+	
+	DECLARE_GLOBAL_SHADER(FS2L4_BasicNoiseCS)
+	
+	SHADER_USE_PARAMETER_STRUCT(FS2L4_BasicNoiseCS,FGlobalShader)
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+	SHADER_PARAMETER(float, Deltatime)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, FS2L4_Output)
+	END_SHADER_PARAMETER_STRUCT()
+	
+	// Basic shader initialization
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+	
+	static constexpr int ThreadsX = 8;
+	static constexpr int ThreadsY = 8;
+	
+	// Define environment variables used by compute shader
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+		FShaderCompilerEnvironment& OutEnvironment)
+	{
+		
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), ThreadsX);
+		OutEnvironment.SetDefine(TEXT("THREADS_Y"), ThreadsY);
+		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+	}
+	
+	
+
+	
+	//Shader run function
+	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
+													  const int inStarCount,
+							TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
+	
+	
+	static void PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount,
+							TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
+	
+	
+	
+private:
+	
+};
