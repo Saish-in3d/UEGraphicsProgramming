@@ -241,9 +241,11 @@ void FS2L3_CustomStructBufferReadBackCS::PollReadBackandDownloadtoGameThread(TAr
 	
 }
 
+
+
 void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
                                                                                const int inStarCount,
-                            TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue)
+                                                                               TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue)
 {
 	TUniquePtr<FRHIGPUBufferReadback> tempFRHIGPUBufferReadback = MakeUnique <FRHIGPUBufferReadback>(
 		TEXT("FS2L3_CustomStructBuffer"));
@@ -315,6 +317,58 @@ void FS2L3_CustomStructBufferReadBackCS::FS2L3_CustomStructBufferReadBackCSRun(c
 	inFRHIGPUBufferReadbackQueue.Enqueue(MoveTemp(tempFRHIGPUBufferReadback));
 }
 
+IMPLEMENT_GLOBAL_SHADER(FS2L4_BasicNoiseCS, "/Plugins/UEGraphicsProgramming/FS2L4_BasicNoiseCS.usf",
+						"FS2L4_BasicNoiseCS", SF_Compute);
 
-
+void FS2L4_BasicNoiseCS::FS2L4_BasicNoiseCSRun(UTextureRenderTarget2D* OutputRenderTarget, const float inDeltatime)
+{
+	
+	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
+	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
+		[OutputRenderTarget, inDeltatime](FRHICommandListImmediate& RHICmdList)
+		{
+			
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+			//Registering render target in RDG 
+			FRDGTextureRef FS2L4_OutputTextureRDGRef = GraphBuilder.RegisterExternalTexture(
+				CreateRenderTarget(OutputRenderTarget->GetRenderTargetResource()->GetTextureRHI(),
+					TEXT("FS2L4_RenderTarget"))) ;
+			
+			//ShaderParameterSetup
+			FS2L4_BasicNoiseCS::FParameters* FS2L4_Parameters = GraphBuilder.AllocParameters<
+				FS2L4_BasicNoiseCS::FParameters>();
+			
+			FS2L4_Parameters->FS2L4_Output =  GraphBuilder.CreateUAV(FS2L4_OutputTextureRDGRef)  ; //Compute Shader directly writes on this RT
+			FS2L4_Parameters->Deltatime = inDeltatime;
+			FS2L4_Parameters->TextureResolution = OutputRenderTarget->SizeX;
+			
+			//Dispatching shader
+			//Initialising compute shader object
+			TShaderMapRef<FS2L4_BasicNoiseCS> FS2L4_BasicNoiseCS(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			
+			//Setting up Group Count
+			FIntVector GroupCount = FComputeShaderUtils::GetGroupCount(FIntPoint(OutputRenderTarget->SizeX,
+				OutputRenderTarget->SizeY), FComputeShaderUtils::kGolden2DGroupSize);
+			
+			//Actually dispatching the shader
+			
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("FS2L4"),
+				FS2L4_BasicNoiseCS,
+				FS2L4_Parameters,
+				GroupCount
+				);
+			
+			GraphBuilder.Execute();
+			
+		}
+	);
+	
+	
+	
+	
+}
 

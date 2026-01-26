@@ -54,8 +54,8 @@ void ASimpleRenderTargetPlane::Tick(float DeltaTime)
 			if (CircleDataBuffer.IsEmpty()){return;}
 			FS1L2_ClearColorCS::FS1L2_ClearColorCSRun(TempOutputRenderTarget);
 			FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(TempOutputRenderTarget, this->GetGameTimeSinceCreation(),CircleDataBuffer, 32); break;
-		/*case 3:FS1L3_SplitScreenCS::FS1L3_SplitScreenCSRun(TempOutputRenderTarget);break;
-		case 4:FS1L4_SolidCircleCS::FS1L4_SolidCircleCSRun(TempOutputRenderTarget);break;*/
+		case 3:break;
+		case 4:FS2L4_BasicNoiseCS::FS2L4_BasicNoiseCSRun(TempOutputRenderTarget,this->GetGameTimeSinceCreation());break;
 		}
 	}
 	

@@ -4,6 +4,7 @@
 
 shared RWTexture2D<float4> FS2L4_Output;
 float Deltatime;
+int TextureResolution;
 
 
 float random (float2 pt, float seed) {
@@ -21,5 +22,5 @@ void FS2L4_BasicNoiseCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	
 	
 	//Drawing solid red color
-	FS2L4_Output[DispatchThreadId.xy] = random(((float2)id.xy)/(float)texResolution, Deltatime) * white;
+	FS2L4_Output[DispatchThreadId.xy] = random(((float2)DispatchThreadId.xy)/(float)TextureResolution, Deltatime) * white;
 }

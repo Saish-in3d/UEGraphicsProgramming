@@ -161,6 +161,7 @@ public:
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 	SHADER_PARAMETER(float, Deltatime)
 	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, FS2L4_Output)
+	SHADER_PARAMETER(int, TextureResolution)
 	END_SHADER_PARAMETER_STRUCT()
 	
 	// Basic shader initialization
@@ -186,16 +187,6 @@ public:
 
 	
 	//Shader run function
-	static void FS2L3_CustomStructBufferReadBackCSRun(const float inDeltatime,
-													  const int inStarCount,
-							TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
-	
-	
-	static void PollReadBackandDownloadtoGameThread(TArray<FTransform>& StarTransformsArray, const int inStarCount,
-							TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
-	
-	
-	
-private:
+	static void FS2L4_BasicNoiseCSRun(UTextureRenderTarget2D* OutputRenderTarget,const float inDeltatime);
 	
 };
