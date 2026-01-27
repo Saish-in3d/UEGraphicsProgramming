@@ -190,3 +190,83 @@ public:
 	static void FS2L4_BasicNoiseCSRun(UTextureRenderTarget2D* OutputRenderTarget,const float inDeltatime);
 	
 };
+
+
+//FS2L5_ProceduralWoodCS
+class UEGRAPHICSPROGRAMMING_API FS2L5_ProceduralWoodCS : public FGlobalShader
+{
+public:
+	
+	DECLARE_GLOBAL_SHADER(FS2L5_ProceduralWoodCS)
+	
+	SHADER_USE_PARAMETER_STRUCT(FS2L5_ProceduralWoodCS,FGlobalShader)
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+	SHADER_PARAMETER(float, Deltatime)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, FS2L5_Output)
+	//SHADER_PARAMETER_STRUCT_REF can be used bekow
+	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FProceduralWoodData>, ProceduralWoodData)//Not using StructuredBuffer<> as we have one dimensional data.
+	SHADER_PARAMETER(int, TextureResolution)
+	END_SHADER_PARAMETER_STRUCT()
+	
+	// Basic shader initialization
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+	
+	static constexpr int ThreadsX = 8;
+	static constexpr int ThreadsY = 8;
+	
+	// Define environment variables used by compute shader
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+		FShaderCompilerEnvironment& OutEnvironment)
+	{
+		
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), ThreadsX);
+		OutEnvironment.SetDefine(TEXT("THREADS_Y"), ThreadsY);
+		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+	}
+	
+	
+	//Shader run function
+	static void FS2L5_ProceduralWoodCSRun(UTextureRenderTarget2D* OutputRenderTarget,
+		const FProceduralWoodData inProceduralWoodData);
+	
+	/*//Basic implementation of SHADER_PARAMETER_STRUCT_REF (RENDER ONLY STRUCT)
+	
+	BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FProceduralWoodUniforms, )
+	SHADER_PARAMETER(FLinearColor, PaleColor)
+	SHADER_PARAMETER(FLinearColor, DarkColour)
+	SHADER_PARAMETER(float, Frequency)
+	SHADER_PARAMETER(float, NoiseScale)
+	SHADER_PARAMETER(float, RingScale)
+	SHADER_PARAMETER(float, Contrast)
+END_GLOBAL_SHADER_PARAMETER_STRUCT()
+
+IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FProceduralWoodUniforms,"ProceduralWoodDataUnif"); //"ProceduralWoodDataUnif" WILL BE USED IN hlsl
+	
+	Reference it in your shader parameters
+	SHADER_PARAMETER_STRUCT_REF(FProceduralWoodUniforms, ProceduralWood)
+	
+	Create & fill the uniform buffer (render thread)
+	FProceduralWoodUniforms WoodUniforms;
+	WoodUniforms.PaleColor  = inProceduralWoodData.PaleColor;
+	WoodUniforms.DarkColour = inProceduralWoodData.DarkColour;
+	WoodUniforms.Frequency  = inProceduralWoodData.Frequency;
+	WoodUniforms.NoiseScale = inProceduralWoodData.NoiseScale;
+	WoodUniforms.RingScale  = inProceduralWoodData.RingScale;
+	WoodUniforms.Contrast   = inProceduralWoodData.Contrast;
+
+	FS2L5_Parameters->ProceduralWood =
+		CreateUniformBufferImmediate(
+			WoodUniforms,
+			UniformBuffer_SingleDraw
+		);
+	
+	HLSL side
+	
+	//use "ProceduralWoodDataUnif" directly*/
+	
+	
+};

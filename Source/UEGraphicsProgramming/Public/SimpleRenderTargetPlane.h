@@ -41,7 +41,8 @@ public:	//Variables
 	UPROPERTY(EditInstanceOnly)
 	int LessonIndex = 0;
 	
-	
+	UPROPERTY(EditInstanceOnly)
+	FProceduralWoodData ProceduralWoodData;
 	
 private: // Variables
 

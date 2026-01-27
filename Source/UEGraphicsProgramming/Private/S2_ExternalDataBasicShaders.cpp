@@ -368,6 +368,71 @@ void FS2L4_BasicNoiseCS::FS2L4_BasicNoiseCSRun(UTextureRenderTarget2D* OutputRen
 	);
 	
 	
+
+	
+}
+
+
+IMPLEMENT_GLOBAL_SHADER(FS2L5_ProceduralWoodCS, "/Plugins/UEGraphicsProgramming/FS2L5_ProceduralWoodCS.usf",
+						"FS2L5_ProceduralWoodCS", SF_Compute);
+
+void FS2L5_ProceduralWoodCS::FS2L5_ProceduralWoodCSRun(UTextureRenderTarget2D* OutputRenderTarget,
+	const FProceduralWoodData inProceduralWoodData)
+{
+	
+	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
+	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
+		[OutputRenderTarget, inProceduralWoodData](FRHICommandListImmediate& RHICmdList)
+		{
+			
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+			//Registering render target in RDG 
+			FRDGTextureRef FS2L5_OutputTextureRDGRef = GraphBuilder.RegisterExternalTexture(
+				CreateRenderTarget(OutputRenderTarget->GetRenderTargetResource()->GetTextureRHI(),
+					TEXT("FS2L5_RenderTarget"))) ;
+			
+			
+			FRDGBufferRef ProceduralWoodInputData = CreateStructuredBuffer(GraphBuilder,
+				TEXT("FS2L5_ProceduralWoodInputData"),
+				sizeof(FProceduralWoodData),
+				1,
+				&inProceduralWoodData,
+				sizeof(FProceduralWoodData));
+			
+			FRDGBufferSRVRef SRV_ProceduralWoodInputData = GraphBuilder.CreateSRV(ProceduralWoodInputData);
+			
+			//ShaderParameterSetup
+			FS2L5_ProceduralWoodCS::FParameters* FS2L5_Parameters = GraphBuilder.AllocParameters<
+				FS2L5_ProceduralWoodCS::FParameters>();
+			
+			FS2L5_Parameters->FS2L5_Output =  GraphBuilder.CreateUAV(FS2L5_OutputTextureRDGRef)  ; //Compute Shader directly writes on this RT
+			FS2L5_Parameters->ProceduralWoodData = SRV_ProceduralWoodInputData;
+			FS2L5_Parameters->TextureResolution = OutputRenderTarget->SizeX;
+			
+			//Dispatching shader
+			//Initialising compute shader object
+			TShaderMapRef<FS2L5_ProceduralWoodCS> FS2L5_ProceduralWoodCS(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			
+			//Setting up Group Count
+			FIntVector GroupCount = FComputeShaderUtils::GetGroupCount(FIntPoint(OutputRenderTarget->SizeX,
+				OutputRenderTarget->SizeY), FComputeShaderUtils::kGolden2DGroupSize);
+			
+			//Actually dispatching the shader
+			
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("FS2L5"),
+				FS2L5_ProceduralWoodCS,
+				FS2L5_Parameters,
+				GroupCount
+				);
+			
+			GraphBuilder.Execute();
+			
+		}
+	);
 	
 	
 }

@@ -1,0 +1,51 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+#include "noise.ush"
+
+
+struct  FProceduralWoodDataHlsl
+{
+	float4 PaleColor;
+
+	float4 DarkColour;
+
+	float Frequency;
+
+	float NoiseScale;
+
+	float RingScale;
+
+	float Contrast;
+};
+
+shared RWTexture2D<float4> FS2L5_Output;
+int TextureResolution;
+
+StructuredBuffer<FProceduralWoodDataHlsl> ProceduralWoodData;
+
+
+float random (float2 pt, float seed) {
+	const float a = 12.9898;
+	const float b = 78.233;
+	const float c = 43758.543123;
+	return frac(sin(dot(pt, float2(a, b)) + seed) * c );
+}
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS2L5_ProceduralWoodCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	float3 pos = (float3(DispatchThreadId.xy,1)/(float)TextureResolution) * 2.0;
+	
+	float n = snoise(pos);
+	
+	float ring = frac(ProceduralWoodData[0].Frequency * pos.z + ProceduralWoodData[0].NoiseScale * n );
+	
+	ring*= ProceduralWoodData[0].Contrast * (1.0 -  ring);
+	
+	// Adjust ring smoothness and shape, and add some noise
+	float Delta = pow(abs(ring), ProceduralWoodData[0].RingScale) + n;
+	
+	FS2L5_Output[DispatchThreadId.xy] = lerp(ProceduralWoodData[0].DarkColour, ProceduralWoodData[0].PaleColor, Delta );
+}

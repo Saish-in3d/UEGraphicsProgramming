@@ -19,8 +19,6 @@ float random (float2 pt, float seed) {
 void FS2L4_BasicNoiseCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	float4 white = 1;
-	
-	
-	//Drawing solid red color
+
 	FS2L4_Output[DispatchThreadId.xy] = random(((float2)DispatchThreadId.xy)/(float)TextureResolution, Deltatime) * white;
 }

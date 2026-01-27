@@ -56,6 +56,7 @@ void ASimpleRenderTargetPlane::Tick(float DeltaTime)
 			FS2L2_CustomStructBufferCS::FS2L2_CustomStructBufferCSRun(TempOutputRenderTarget, this->GetGameTimeSinceCreation(),CircleDataBuffer, 32); break;
 		case 3:break;
 		case 4:FS2L4_BasicNoiseCS::FS2L4_BasicNoiseCSRun(TempOutputRenderTarget,this->GetGameTimeSinceCreation());break;
+		case 5:FS2L5_ProceduralWoodCS::FS2L5_ProceduralWoodCSRun(TempOutputRenderTarget,ProceduralWoodData);break;
 		}
 	}
 	
