@@ -437,3 +437,58 @@ void FS2L5_ProceduralWoodCS::FS2L5_ProceduralWoodCSRun(UTextureRenderTarget2D* O
 	
 }
 
+
+IMPLEMENT_GLOBAL_SHADER(FS2L6_ProceduralMarbleCS, "/Plugins/UEGraphicsProgramming/FS2L6_ProceduralMarbleCS.usf",
+						"FS2L6_ProceduralMarbleCS", SF_Compute);
+
+
+void FS2L6_ProceduralMarbleCS::FS2L6_ProceduralMarbleCSRun(UTextureRenderTarget2D* OutputRenderTarget)
+{
+	
+	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
+	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
+		[OutputRenderTarget](FRHICommandListImmediate& RHICmdList)
+		{
+			
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+			//Registering render target in RDG 
+			FRDGTextureRef FS2L6_OutputTextureRDGRef = GraphBuilder.RegisterExternalTexture(
+				CreateRenderTarget(OutputRenderTarget->GetRenderTargetResource()->GetTextureRHI(),
+					TEXT("FS2L6_RenderTarget"))) ;
+			
+			//ShaderParameterSetup
+			FS2L6_ProceduralMarbleCS::FParameters* FS2L6_Parameters = GraphBuilder.AllocParameters<
+				FS2L6_ProceduralMarbleCS::FParameters>();
+			
+			FS2L6_Parameters->FS2L6_Output =  GraphBuilder.CreateUAV(FS2L6_OutputTextureRDGRef)  ; //Compute Shader directly writes on this RT
+			FS2L6_Parameters->Marble = 1;
+			FS2L6_Parameters->TextureResolution = OutputRenderTarget->SizeX;
+			
+			//Dispatching shader
+			//Initialising compute shader object
+			TShaderMapRef<FS2L6_ProceduralMarbleCS> FS2L6_ProceduralMarbleCS(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			
+			//Setting up Group Count
+			FIntVector GroupCount = FComputeShaderUtils::GetGroupCount(FIntPoint(OutputRenderTarget->SizeX,
+				OutputRenderTarget->SizeY), FComputeShaderUtils::kGolden2DGroupSize);
+			
+			//Actually dispatching the shader
+			
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("FS2L6"),
+				FS2L6_ProceduralMarbleCS,
+				FS2L6_Parameters,
+				GroupCount
+				);
+			
+			GraphBuilder.Execute();
+			
+		}
+	);
+	
+	
+}
+

@@ -270,3 +270,45 @@ IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FProceduralWoodUniforms,"ProceduralWood
 	
 	
 };
+
+
+//FS2L6_ProceduralMarbleCS
+class UEGRAPHICSPROGRAMMING_API FS2L6_ProceduralMarbleCS : public FGlobalShader
+{
+public:
+	
+	DECLARE_GLOBAL_SHADER(FS2L6_ProceduralMarbleCS)
+	
+	
+	SHADER_USE_PARAMETER_STRUCT(FS2L6_ProceduralMarbleCS,FGlobalShader)
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+	SHADER_PARAMETER(uint32, Marble)
+	SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, FS2L6_Output)
+	SHADER_PARAMETER(int, TextureResolution)
+	END_SHADER_PARAMETER_STRUCT()
+	
+	// Basic shader initialization
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+	
+	static constexpr int ThreadsX = 8;
+	static constexpr int ThreadsY = 8;
+	
+	// Define environment variables used by compute shader
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+		FShaderCompilerEnvironment& OutEnvironment)
+	{
+		
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), ThreadsX);
+		OutEnvironment.SetDefine(TEXT("THREADS_Y"), ThreadsY);
+		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+	}
+	
+	
+	//Shader run function
+	static void FS2L6_ProceduralMarbleCSRun(UTextureRenderTarget2D* OutputRenderTarget);
+	
+};

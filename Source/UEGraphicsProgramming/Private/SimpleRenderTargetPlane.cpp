@@ -57,6 +57,7 @@ void ASimpleRenderTargetPlane::Tick(float DeltaTime)
 		case 3:break;
 		case 4:FS2L4_BasicNoiseCS::FS2L4_BasicNoiseCSRun(TempOutputRenderTarget,this->GetGameTimeSinceCreation());break;
 		case 5:FS2L5_ProceduralWoodCS::FS2L5_ProceduralWoodCSRun(TempOutputRenderTarget,ProceduralWoodData);break;
+		case 6:FS2L6_ProceduralMarbleCS::FS2L6_ProceduralMarbleCSRun(TempOutputRenderTarget);break;
 		}
 	}
 	
