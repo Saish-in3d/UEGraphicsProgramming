@@ -18,6 +18,14 @@ public class UEGraphicsProgramming : ModuleRules
 			"RHI",
 			"Projects",
 			"MediaAssets",
+			"GeometryCore",
+			"MeshConversion",
+			"GeometryFramework",
+			"DynamicMesh",
+			"GeometryScriptingCore",
+			"MeshDescription",
+			"StaticMeshDescription",
+			
 		});
 			
 		
