@@ -20,5 +20,9 @@
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
 		}
+	],
+
+	"Plugins": [
+		{ "Name": "GeometryScripting", "Enabled": true }
 	]
 }

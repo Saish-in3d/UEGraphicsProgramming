@@ -43,6 +43,6 @@ public:
 	
 	UDynamicMesh* Mesh;
 	
-	void ConvertStaticMeshToDynamicMesh(UStaticMesh* StaticMesh,UDynamicMeshComponent* DynamicMeshComp);
+	void ConvertStaticMeshToDynamicMesh(UStaticMesh* StaticMesh,UDynamicMeshComponent* DynamicMeshComp,float Time);
 
 };
