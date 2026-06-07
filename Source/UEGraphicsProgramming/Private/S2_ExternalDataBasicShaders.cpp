@@ -492,3 +492,147 @@ void FS2L6_ProceduralMarbleCS::FS2L6_ProceduralMarbleCSRun(UTextureRenderTarget2
 	
 }
 
+
+IMPLEMENT_GLOBAL_SHADER(FS2L7_ReadbackDeformMeshCS, "/Plugins/UEGraphicsProgramming/FS2L7_ReadbackDeformMeshCS.usf",
+						"FS2L7_ReadbackDeformMeshCS", SF_Compute);
+
+void FS2L7_ReadbackDeformMeshCS::FS2L7_ReadbackDeformMeshCSRun(const float inAlpha,
+                                                               const int inVerticeCount,
+                                                               TArray<FVector3f>& initialVerticesBuffer,
+                                                               TQueue<TUniquePtr<FRHIGPUBufferReadback>,
+                                                               EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue)
+{
+	TUniquePtr<FRHIGPUBufferReadback> tempFRHIGPUBufferReadback = MakeUnique <FRHIGPUBufferReadback>(
+		TEXT("FS2L7_VertBuffer"));
+	
+	
+	if (!tempFRHIGPUBufferReadback.IsValid()){return;}
+	FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer = tempFRHIGPUBufferReadback.Get();
+	float Alpha_RT = inAlpha;
+	ENQUEUE_RENDER_COMMAND(FS2L7_ReadbackDeformMeshCSRun)(
+		[Alpha_RT,inVerticeCount,initialVerticesBuffer,FRHIGPUBufferReadbackPointer]
+		(FRHICommandListImmediate& RHICmdList)
+		{
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+
+			//Creating GPU RDG buffer ref
+			FRDGBufferRef InputRDGVertBuffer = CreateStructuredBuffer(GraphBuilder,TEXT("InputVertBuffer"),
+														sizeof(FVector3f),
+														inVerticeCount,
+														initialVerticesBuffer.GetData(),
+														sizeof(FVector3f) * inVerticeCount);
+			
+			//Create SRV out of it
+			const FRDGBufferSRVRef InputRDGRef_SRV = GraphBuilder.CreateSRV(InputRDGVertBuffer);
+
+			
+			//Creating Output GPU RDG buffer desc
+			
+			FRDGBufferDesc VertTransformsGPUBufferDesc = FRDGBufferDesc::CreateByteAddressDesc(
+																			sizeof(FVector3f) * inVerticeCount);
+
+			
+			//Creating GPU RDG buffer Ref
+			FRDGBufferRef VertTransformsGPUBuffer = GraphBuilder.CreateBuffer(VertTransformsGPUBufferDesc,
+																				TEXT("VertTransformsGPUBuffer"));				
+			
+			//Making GPU RDG buffer Ref as UAV
+			const FRDGBufferUAVRef VertTransformsGPUBufferUAV = GraphBuilder.CreateUAV(VertTransformsGPUBuffer);
+			AddClearUAVPass(GraphBuilder, VertTransformsGPUBufferUAV, 0);
+			
+			//ShaderParameterSetup
+			FS2L7_ReadbackDeformMeshCS::FParameters* FS2L7_Parameters = GraphBuilder.AllocParameters<
+				FS2L7_ReadbackDeformMeshCS::FParameters>();
+			
+			//Setting actual parameters
+			FS2L7_Parameters->SphereRadius = 50;
+			FS2L7_Parameters->Alpha = Alpha_RT;
+			FS2L7_Parameters->FS2L7_InitialMeshVerticeBuffer = InputRDGRef_SRV;
+			FS2L7_Parameters->FS2L7VerticesBufferOutput = VertTransformsGPUBufferUAV;
+			
+			//Initialising compute shader object
+			TShaderMapRef<FS2L7_ReadbackDeformMeshCS> FS2L7_ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+			
+			int GroupCountX = (inVerticeCount + ThreadsX - 1)/ThreadsX;
+			
+			//Setting up Group Count
+			FIntVector GroupCount = FIntVector(GroupCountX,1,1);
+			
+			//Actually dispatching the shader (at the end of execution output of shader will be stored in UAV)
+			FComputeShaderUtils::AddPass(
+				GraphBuilder,
+				RDG_EVENT_NAME("FS2L7"),
+				FS2L7_ComputeShader,
+				FS2L7_Parameters,
+				GroupCount
+				);
+			
+			if (!VertTransformsGPUBuffer){return;}
+			// preparing StarTransformsGPUBuffer for cpu readback by adding it to 
+			// FRHIGPUBufferReadbackPointer (stagging readback buffer queue) this buffer is visible to cpu memory
+			//Even tho gpu memory is visible to cpu but copying it before GPU finish its task will create desync issues
+			//Large size data can take more than one 1 frame time for actual readback to cpu
+			//Below func creates a copy of the buffer and creates a sync fence which we can poll (check) on render thread
+			//to make sure that the GPU operation on that buffer is complete
+			AddEnqueueCopyPass(GraphBuilder, FRHIGPUBufferReadbackPointer, VertTransformsGPUBuffer, /*OffsetBytes=*/0);
+			GraphBuilder.Execute();
+
+		});
+	
+	inFRHIGPUBufferReadbackQueue.Enqueue(MoveTemp(tempFRHIGPUBufferReadback));
+	
+	
+}
+
+void FS2L7_ReadbackDeformMeshCS::PollReadBackandDownloadtoGameThread(TArray<FVector3f>& VertReadbackArray,
+                                                                     const int inVerticeCount,
+                                                                     TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue)
+{
+	ENQUEUE_RENDER_COMMAND(PollReadback)(
+		[ inVerticeCount,&inFRHIGPUBufferReadbackQueue,&VertReadbackArray](FRHICommandListImmediate& RHICmdList)
+		{
+			
+			TUniquePtr<FRHIGPUBufferReadback> tempFRHIGPUBufferReadback;
+			
+			if(!inFRHIGPUBufferReadbackQueue.Dequeue(tempFRHIGPUBufferReadback)){return;}
+			
+			if (!tempFRHIGPUBufferReadback){return;}
+	
+			FRHIGPUBufferReadback* FRHIGPUBufferReadbackPointer = tempFRHIGPUBufferReadback.Get();
+			
+			
+			//Continously polling inFRHIGPUBufferReadback (stagging readback buffer queue) on render thread
+			if (!FRHIGPUBufferReadbackPointer->IsReady())
+			{
+				inFRHIGPUBufferReadbackQueue.Enqueue(MoveTemp(tempFRHIGPUBufferReadback));
+				return;
+			}
+		
+
+			//Locking Gpu buffer for readback.
+			const size_t NumBytes = sizeof(FVector3f) * inVerticeCount;
+			void* Data = FRHIGPUBufferReadbackPointer->Lock(NumBytes);
+
+			//Init render thread staging CPU data array
+			TArray<FVector3f> CPULocations_RenderThread;
+			CPULocations_RenderThread.SetNumUninitialized(inVerticeCount);
+		
+			//Copying the data to render thread staging array
+			FMemory::Memcpy(CPULocations_RenderThread.GetData(), Data, NumBytes);
+
+			//Now our copy is done we will unloack and release GPU stagging buffer
+			FRHIGPUBufferReadbackPointer->Unlock();
+
+			// Copying Render thread data to Game thread for further application
+			AsyncTask(ENamedThreads::GameThread, [ CPUVerts = MoveTemp(CPULocations_RenderThread),
+				&VertReadbackArray]()
+			{
+				VertReadbackArray = CPUVerts;
+			});
+		});
+	
+	
+}
+

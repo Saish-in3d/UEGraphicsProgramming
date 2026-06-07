@@ -7,6 +7,10 @@
 #include "ShaderParameterStruct.h"
 #include "RHIGPUReadback.h"
 #include "CommonStructs.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
+#include "Chaos/AABBTree.h"
 #include "Containers/Queue.h"
 
 
@@ -311,4 +315,59 @@ public:
 	//Shader run function
 	static void FS2L6_ProceduralMarbleCSRun(UTextureRenderTarget2D* OutputRenderTarget);
 	
+};
+
+
+
+
+
+//Shader declaration
+
+class UEGRAPHICSPROGRAMMING_API FS2L7_ReadbackDeformMeshCS : public FGlobalShader
+{
+public:
+	
+	DECLARE_GLOBAL_SHADER(FS2L7_ReadbackDeformMeshCS)
+	
+	SHADER_USE_PARAMETER_STRUCT(FS2L7_ReadbackDeformMeshCS,FGlobalShader)
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+	SHADER_PARAMETER(float, SphereRadius)
+	SHADER_PARAMETER(float, Alpha)
+	SHADER_PARAMETER_RDG_BUFFER_SRV(RWStructuredBuffer<Vector3f>,FS2L7_InitialMeshVerticeBuffer)
+	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FVector3f>,FS2L7VerticesBufferOutput)
+	END_SHADER_PARAMETER_STRUCT()
+	
+	// Basic shader initialization
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+	
+	static constexpr int ThreadsX = 64;
+	
+	// Define environment variables used by compute shader
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+		FShaderCompilerEnvironment& OutEnvironment)
+	{
+		
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), ThreadsX);
+		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
+		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+	}
+	
+	
+
+	
+	//Shader run function
+	static void FS2L7_ReadbackDeformMeshCSRun(const float inAlpha,
+	                                          const int inVerticeCount,
+	                                          TArray<FVector3f>& initialVerticesBuffer,
+	                                          TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
+	
+	
+	static void PollReadBackandDownloadtoGameThread(TArray<FVector3f>& VertReadbackArray, const int inVerticeCount,
+	                                                TQueue<TUniquePtr<FRHIGPUBufferReadback>, EQueueMode::Spsc>& inFRHIGPUBufferReadbackQueue);
+	
+
 };

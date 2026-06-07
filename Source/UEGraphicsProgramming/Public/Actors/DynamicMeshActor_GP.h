@@ -5,11 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Components/DynamicMeshComponent.h"
-#include "DynamicMesh/DynamicMesh3.h"
-#include "StaticMeshDescription.h"
-#include "StaticMeshAttributes.h"
-#include "MeshDescriptionToDynamicMesh.h"
-#include "MeshDescriptionToDynamicMesh.h"
+#include "RHIGPUReadback.h"
+#include "Containers/Queue.h"
 #include "DynamicMeshActor_GP.generated.h"
 
 UCLASS()
@@ -41,8 +38,21 @@ public:
 	
 	private:
 	
-	UDynamicMesh* Mesh;
+	//UDynamicMesh* Mesh;
+	
+	UDynamicMesh* DynMesh;
+	
+	TArray<FVector3f> InitialVertices;
+	
+	TQueue<TUniquePtr<FRHIGPUBufferReadback>> GPUBufferReadbackQueue;
+	
+	TUniquePtr<FRHIGPUBufferReadback> StarTransformReadback;
+	
+	TArray<FVector3f> ReadBackVertices;
 	
 	void ConvertStaticMeshToDynamicMesh(UStaticMesh* StaticMesh,UDynamicMeshComponent* DynamicMeshComp,float Time);
+	
+	void DeformMesh();
+	
 
 };

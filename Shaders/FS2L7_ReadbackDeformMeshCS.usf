@@ -1,0 +1,23 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+
+float SphereRadius;
+float Alpha;
+StructuredBuffer<float3> FS2L7_InitialMeshVerticeBuffer;
+shared RWStructuredBuffer<float3> FS2L7VerticesBufferOutput;
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS2L7_ReadbackDeformMeshCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+{
+	
+	float3 InitialPos = FS2L7_InitialMeshVerticeBuffer[DispatchThreadId.x];
+	float3 SphereFinalPos = normalize(InitialPos)* SphereRadius ;
+	float3 CurrentPosition = lerp(SphereFinalPos, InitialPos, Alpha);
+
+	
+	FS2L7VerticesBufferOutput[DispatchThreadId.x] = CurrentPosition;
+	
+}

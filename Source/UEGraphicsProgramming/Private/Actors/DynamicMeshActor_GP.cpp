@@ -8,6 +8,8 @@
 
 #include "GeometryScript/MeshPrimitiveFunctions.h"
 
+#include "S2_ExternalDataBasicShaders.h"
+
 // Sets default values
 ADynamicMeshActor_GP::ADynamicMeshActor_GP()
 {
@@ -21,11 +23,6 @@ ADynamicMeshActor_GP::ADynamicMeshActor_GP()
 	DynamicMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	
 	
-	Mesh = DynamicMeshComp->GetDynamicMesh();
-
-	//UGeometryScriptLibrary_StaticMeshFunctions::CopyMeshFromStaticMesh();
-	
-	
 
 	DynamicMeshComp->NotifyMeshUpdated();
 }
@@ -34,7 +31,7 @@ ADynamicMeshActor_GP::ADynamicMeshActor_GP()
 void ADynamicMeshActor_GP::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	ConvertStaticMeshToDynamicMesh(StaticMeshComponent_temp,DynamicMeshComp,1.f);
 
 }
 
@@ -44,7 +41,9 @@ void ADynamicMeshActor_GP::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	
-	ConvertStaticMeshToDynamicMesh(StaticMeshComponent_temp,DynamicMeshComp, this->GetGameTimeSinceCreation());
+	//ConvertStaticMeshToDynamicMesh(StaticMeshComponent_temp,DynamicMeshComp, this->GetGameTimeSinceCreation());
+	DeformMesh();
+	
 
 }
 
@@ -52,7 +51,7 @@ void ADynamicMeshActor_GP::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	
-	ConvertStaticMeshToDynamicMesh(StaticMeshComponent_temp,DynamicMeshComp,1.f);
+	
 	
 }
 
@@ -63,15 +62,10 @@ void ADynamicMeshActor_GP::ConvertStaticMeshToDynamicMesh(UStaticMesh* StaticMes
 	{
 		return;
 	}
-
-	/*// Get LOD 0 mesh description
-	const FMeshDescription* MeshDesc = StaticMesh->GetMeshDescription(0);
-	if (!MeshDesc)
-	{
-		return;
-	}*/
 	
-	UDynamicMesh* DynMesh = inDynamicMeshComp->GetDynamicMesh();
+	
+
+	DynMesh = inDynamicMeshComp->GetDynamicMesh();
 	check(DynMesh);
 	
 	EGeometryScriptOutcomePins Outcome;
@@ -81,20 +75,61 @@ void ADynamicMeshActor_GP::ConvertStaticMeshToDynamicMesh(UStaticMesh* StaticMes
 	UGeometryScriptLibrary_StaticMeshFunctions::CopyMeshFromStaticMesh(
 	StaticMesh, DynMesh, AssetOptions, RequestedLOD, Outcome);
 
-	
-
 	DynMesh->EditMesh([&](UE::Geometry::FDynamicMesh3& EditMesh)
 	{
-		//EditMesh.Clear();
-		
-		UE::Geometry::TDynamicVector<FVector3d> Vertices;
-		
-		Vertices = EditMesh.GetVerticesBuffer();
+		InitialVertices.SetNum(EditMesh.VertexCount());
 		
 		for (int32 vid : EditMesh.VertexIndicesItr())
 		{
-			FVector3d Pos = EditMesh.GetVertex(vid);
-			Pos.Z += FMath::Sin(Pos.X * 0.05 + Time) * 20.0;
+			//Saving Compute shader friendly initial verts in InitialVertices array
+			InitialVertices[vid] = (FVector3f)EditMesh.GetVertex(vid);
+		}
+		
+	}, EDynamicMeshChangeType::DeformationEdit);
+
+	DynamicMeshComp->NotifyMeshUpdated();
+
+	
+}
+
+
+
+void ADynamicMeshActor_GP::DeformMesh()
+{
+	
+	//Calculate alpha
+	
+	float Alpha = sin(GetGameTimeSinceCreation());
+	
+	//Run compute shader
+	
+	if (InitialVertices.IsEmpty()){return;}
+	
+	FS2L7_ReadbackDeformMeshCS::FS2L7_ReadbackDeformMeshCSRun(Alpha,
+		InitialVertices.Num(),
+		InitialVertices,
+		GPUBufferReadbackQueue
+		);
+	
+	
+	
+	ReadBackVertices.SetNum(InitialVertices.Num());
+	
+	FS2L7_ReadbackDeformMeshCS::PollReadBackandDownloadtoGameThread(
+		ReadBackVertices,
+		InitialVertices.Num(),
+		GPUBufferReadbackQueue
+		);
+	
+	
+	if (ReadBackVertices.IsEmpty()){return;}
+	
+	DynMesh->EditMesh([&](UE::Geometry::FDynamicMesh3& EditMesh)
+	{
+		
+		for (int32 vid : EditMesh.VertexIndicesItr())
+		{
+			FVector3d Pos = (FVector3d)ReadBackVertices[vid];
 			EditMesh.SetVertex(vid, Pos);
 			
 		}
@@ -106,8 +141,9 @@ void ADynamicMeshActor_GP::ConvertStaticMeshToDynamicMesh(UStaticMesh* StaticMes
 		}
 		
 		
-	}, EDynamicMeshChangeType::DeformationEdit);
+	}, EDynamicMeshChangeType::GeneralEdit);
 
-	inDynamicMeshComp->NotifyMeshUpdated();
+	DynamicMeshComp->NotifyMeshUpdated();
+	
 }
 
