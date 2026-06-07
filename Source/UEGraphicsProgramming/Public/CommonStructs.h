@@ -46,3 +46,19 @@ struct alignas(16) FProceduralWoodData
 /*FVector2f Origin;
 FVector2f Velocity;
 float Radius;*/
+
+
+USTRUCT(BlueprintType)
+struct alignas(16) FParticle
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector3f Position;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Life;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector3f Velocity;
+};
