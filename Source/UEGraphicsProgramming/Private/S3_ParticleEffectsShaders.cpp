@@ -46,7 +46,7 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 																						ParticleCount
 																						);
 			
-			//Allocating space on GPU for buffer
+			//Allocating space on GPU for buffer with random data
 			AllocatePooledBuffer(PooledParticleBufferDesc,
 								inPooledParticleBufffer,
 								TEXT("ParticleEffectBuffer"),
@@ -55,14 +55,14 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 			
 			
 			
-			//Actually creating a pooled buffer 
-			
+			//Locking allocated space to make sure it is not accessable to other threads or gpy devices.
 			void* Data =  RHICmdList.LockBuffer(inPooledParticleBufffer->GetRHI(),
 				0,
 				InitialParticleArray.GetTypeSize()* ParticleCount,
 				RLM_WriteOnly
 				);
 			
+			//Uploading/copying data from render thread memory context to GPU memory
 			FMemory::Memcpy(
 			Data,
 			InitialParticleArray.GetData(),
