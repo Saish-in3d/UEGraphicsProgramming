@@ -51,7 +51,7 @@ public:
 	}
 	
 	
-	static void InitShaderData(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
+	static void InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
 								uint32 ParticleCount
 								);
 	

@@ -13,12 +13,19 @@ IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectCS, "/Plugins/UEGraphicsProgram
 						"FS3L1_BasicParticleEffectCS", SF_Compute);
 
 
-void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
+void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
 	uint32 ParticleCount)
 {
+	
+	//Passing &inPooledParticleBufffer as refrence so need to make sure that pooled particle buffer is safe on game thread
 	ENQUEUE_RENDER_COMMAND(InitParticleBuffer)(
-		[inPooledParticleBufffer,ParticleCount](FRHICommandListImmediate& RHICmdList)
+		[&inPooledParticleBufffer,ParticleCount](FRHICommandListImmediate& RHICmdList)
 		{
+			
+			/*FRDGBuilder GraphBuilder(RHICmdList);
+			
+			GraphBuilder.Q*/
+			
 			//iF IT bLOCKS RENDER THREAD, MOVE data creation loop on a worker thread or use parallel for
 			
 			
@@ -35,17 +42,36 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer> 
 			
 			//Creating buffer desc
 			
-			FRDGBufferDesc PooledParticleBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(FParticle),
+			FRDGBufferDesc PooledParticleBufferDesc = FRDGBufferDesc::CreateStructuredDesc(sizeof(FParticle),
 																						ParticleCount
 																						);
 			
+			//Allocating space on GPU for buffer
+			AllocatePooledBuffer(PooledParticleBufferDesc,
+								inPooledParticleBufffer,
+								TEXT("ParticleEffectBuffer"),
+								ERDGPooledBufferAlignment::None);			
+			
+			
+			
+			
 			//Actually creating a pooled buffer 
 			
-			RHICmdList.LockBuffer(inPooledParticleBufffer->GetRHI(),
+			void* Data =  RHICmdList.LockBuffer(inPooledParticleBufffer->GetRHI(),
 				0,
 				InitialParticleArray.GetTypeSize()* ParticleCount,
 				RLM_WriteOnly
 				);
+			
+			FMemory::Memcpy(
+			Data,
+			InitialParticleArray.GetData(),
+			ParticleCount * sizeof(FParticle)
+			);
+			
+			RHICmdList.UnlockBuffer(
+			inPooledParticleBufffer->GetRHI()
+			);
 			
 			
 		});
