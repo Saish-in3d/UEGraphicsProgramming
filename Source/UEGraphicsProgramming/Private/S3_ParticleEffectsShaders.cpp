@@ -4,6 +4,7 @@
 #include "S3_ParticleEffectsShaders.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
+#include "Animation/InputScaleBias.h"
 #include "Chaos/AABBTree.h"
 #include "Chaos/AABBTree.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -22,10 +23,6 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 		[&inPooledParticleBufffer,ParticleCount](FRHICommandListImmediate& RHICmdList)
 		{
 			
-			/*FRDGBuilder GraphBuilder(RHICmdList);
-			
-			GraphBuilder.Q*/
-			
 			//iF IT bLOCKS RENDER THREAD, MOVE data creation loop on a worker thread or use parallel for
 			
 			
@@ -33,8 +30,29 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 			TArray<FParticle> InitialParticleArray;
 			InitialParticleArray.SetNum(ParticleCount);
 			
-			//Assign values for each individual element
-			
+			for (int i = 0 ;i < ParticleCount; i++)
+			{
+				FVector3f TempInitialParticleLocation = FVector3f();
+				TempInitialParticleLocation.X = FMath::FRand() * 2.f - 1.f;
+				TempInitialParticleLocation.Y = FMath::FRand() * 2.f - 1.f;
+				TempInitialParticleLocation.Z = FMath::FRand() * 2.f - 1.f;
+				
+				TempInitialParticleLocation.Normalize();
+				
+				TempInitialParticleLocation *= FMath::FRand() * 0.5f;
+				
+				
+				InitialParticleArray[i].Position.X = TempInitialParticleLocation.X;
+				InitialParticleArray[i].Position.Y = TempInitialParticleLocation.Y;
+				InitialParticleArray[i].Position.Z = TempInitialParticleLocation.Z + 3;
+				
+				InitialParticleArray[i].Velocity.X = 0;
+				InitialParticleArray[i].Velocity.Y = 0;
+				InitialParticleArray[i].Velocity.Z = 0;
+				
+				InitialParticleArray[i].Life = FMath::FRand();
+				
+			}
 			/*Particle setting logic end*/
 			
 			
@@ -80,7 +98,9 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 }
 
 void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TArray<FParticle> inParticleArray,
-                                                                 const float inDeltatime, uint32 ParticleCount, FVector3f Focus)
+                                                                 const float inDeltatime,
+                                                                 uint32 ParticleCount,
+                                                                 FVector3f Focus)
 {
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
