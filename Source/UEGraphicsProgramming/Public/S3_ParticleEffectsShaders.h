@@ -57,7 +57,7 @@ public:
 	
 	//Shader run function
 
-	static void FS3L1_BasicParticleEffectCSRun(TArray<FParticle> inParticleArray,
+	static void FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
 												const float inDeltatime,
 												uint32 ParticleCount,
 												FVector3f Focus);

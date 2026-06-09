@@ -97,26 +97,23 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 	
 }
 
-void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TArray<FParticle> inParticleArray,
+void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
                                                                  const float inDeltatime,
                                                                  uint32 ParticleCount,
                                                                  FVector3f Focus)
 {
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
-		[inParticleArray,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
+		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//Getting new graph builder each frame
 			FRDGBuilder GraphBuilder(RHICmdList);
 			
-			//Registering render target in RDG 
-			FRDGBufferRef FS3L1_ParticleBufferRDGRef = CreateStructuredBuffer(GraphBuilder,
-				TEXT("FS3L1_ParticleBufferRDGRef"),
-				sizeof(FParticle),
-				ParticleCount,
-				&inParticleArray,
-				sizeof(FParticle));
+			//Registering Buffer in RDG 
+			FRDGBufferRef FS3L1_ParticleBufferRDGRef = GraphBuilder.RegisterExternalBuffer(inPooledParticleBufffer,
+																	TEXT("FS3L1_ParticleBufferRDGRef")
+																	);
 			
 			//ShaderParameterSetup
 			FS3L1_BasicParticleEffectCS::FParameters* FS3L1_Parameters = GraphBuilder.AllocParameters<
