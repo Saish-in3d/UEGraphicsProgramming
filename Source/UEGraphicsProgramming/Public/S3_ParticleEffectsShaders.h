@@ -62,6 +62,16 @@ public:
 												uint32 ParticleCount,
 												FVector3f Focus);
 	
+	
+	BEGIN_SHADER_PARAMETER_STRUCT(FParametersVS,)
+	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
+	SHADER_PARAMETER(FMatrix44f, WorldToClip)
+	SHADER_PARAMETER(float, PointSize)
+	SHADER_PARAMETER(uint32, ParticleCount)
+	RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()
+	
+	
 	static void FS3L1_BasicParticleEffectVSRun(TArray<FParticle> inParticleArray,
 												const float inDeltatime,
 												uint32 ParticleCount,

@@ -103,7 +103,7 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FR
                                                                  FVector3f Focus)
 {
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
-	ENQUEUE_RENDER_COMMAND(DispatchMyCompute)(
+	ENQUEUE_RENDER_COMMAND(FS3L1_BasicParticleEffectCSRun)(
 		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
 		{
 			
@@ -156,9 +156,18 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectVSRun(TArray<FParticl
 	const float inDeltatime, uint32 ParticleCount, FVector3f Focus)
 {
 	
-	FPostOpaqueRenderParameters RenderParameters;
+	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
+	ENQUEUE_RENDER_COMMAND(FS3L1_BasicParticleEffectVSRun)(
+		[inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
+		{
+			//Getting new graph builder each frame
+			FRDGBuilder GraphBuilder(RHICmdList);
+			
+			
+			
+			
+		});
 	
-	RenderParameters;
 	
 	
 }
