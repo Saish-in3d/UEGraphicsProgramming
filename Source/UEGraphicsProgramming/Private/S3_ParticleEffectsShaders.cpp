@@ -102,6 +102,8 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FR
                                                                  uint32 ParticleCount,
                                                                  FVector3f Focus)
 {
+	if (!inPooledParticleBufffer.IsValid()){return;}
+	
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(FS3L1_BasicParticleEffectCSRun)(
 		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
@@ -152,20 +154,70 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FR
 	
 }
 
-void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectVSRun(TArray<FParticle> inParticleArray,
+void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectVSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
 	const float inDeltatime, uint32 ParticleCount, FVector3f Focus)
 {
+	/*if(!IsInRenderingThread()){return;}
+	
 	
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(FS3L1_BasicParticleEffectVSRun)(
-		[inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
+		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
 		{
+			
+			if (!inPooledParticleBufffer.IsValid()){return;}
+			
 			//Getting new graph builder each frame
 			FRDGBuilder GraphBuilder(RHICmdList);
+			const FSceneView& View    = *Parameters.View;
 			
 			
 			
 			
+		});*/
+	
+	
+	
+}
+
+IMPLEMENT_GLOBAL_SHADER(FParticleVS,       "/Project/ParticleRender.usf", "MainVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FParticlePS,       "/Project/ParticleRender.usf", "MainPS", SF_Pixel);
+
+void FS3L1_BasicParticleEffectCS::AddPass(
+		FRDGBuilder& GraphBuilder,
+		const FSceneView& View,
+		FRDGTextureRef ColorTexture,
+		FRDGTextureRef DepthTexture,
+		const FIntRect& ViewportRect,
+		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
+		int32 ParticleCount,
+		float PointSize)
+{
+	FRDGBufferRef ParticleBuffer = GraphBuilder.RegisterExternalBuffer(
+		PooledParticleBuffer, TEXT("ParticleBuffer"));
+
+	FParametersVSPS* P =
+		GraphBuilder.AllocParameters<FParametersVSPS>();
+	P->FS3L1_ParticleBuffer = GraphBuilder.CreateSRV(ParticleBuffer);
+	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());
+	P->PointSize      = PointSize * 0.001f;
+	P->ParticleCount  = ParticleCount;
+	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad);
+	P->RenderTargets.DepthStencil = FDepthStencilBinding(
+		DepthTexture, ERenderTargetLoadAction::ELoad, ERenderTargetLoadAction::ELoad,
+		FExclusiveDepthStencil::DepthRead_StencilNop);
+
+	TShaderMapRef<FParticleVS> VertexShader(GetGlobalShaderMap(View.GetFeatureLevel()));
+	TShaderMapRef<FParticlePS> PixelShader (GetGlobalShaderMap(View.GetFeatureLevel()));
+
+	const uint32 NumPrimitives = (uint32)ParticleCount * 2;
+
+	GraphBuilder.AddPass(
+		RDG_EVENT_NAME("ParticleDraw"), P, ERDGPassFlags::Raster,
+		[P, VertexShader, PixelShader, ViewportRect, NumPrimitives]
+		(FRHICommandList& RHICmdList)
+		{
+			// ... identical PSO setup + DrawPrimitive as before ...
 		});
 	
 	

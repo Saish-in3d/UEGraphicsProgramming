@@ -63,18 +63,45 @@ public:
 												FVector3f Focus);
 	
 	
-	BEGIN_SHADER_PARAMETER_STRUCT(FParametersVS,)
-	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
+	
+	
+	
+	static void FS3L1_BasicParticleEffectVSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
+												const float inDeltatime,
+												uint32 ParticleCount,
+												FVector3f Focus);
+	
+	
+	
+	static void AddPass(
+		FRDGBuilder& GraphBuilder,
+		const FSceneView& View,
+		FRDGTextureRef ColorTexture,
+		FRDGTextureRef DepthTexture,
+		const FIntRect& ViewportRect,
+		const TRefCountPtr<FRDGPooledBuffer>& ParticleBuffer,
+		int32 ParticleCount,
+		float PointSize);
+};
+
+BEGIN_SHADER_PARAMETER_STRUCT(FParametersVSPS,)
+	SHADER_PARAMETER_RDG_BUFFER_SRV(RWStructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
 	SHADER_PARAMETER(FMatrix44f, WorldToClip)
 	SHADER_PARAMETER(float, PointSize)
 	SHADER_PARAMETER(uint32, ParticleCount)
 	RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
-	
-	
-	static void FS3L1_BasicParticleEffectVSRun(TArray<FParticle> inParticleArray,
-												const float inDeltatime,
-												uint32 ParticleCount,
-												FVector3f Focus);
+
+class FParticleVS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FParticleVS);
+	using FParameters = FParametersVSPS;
+	SHADER_USE_PARAMETER_STRUCT(FParticleVS, FGlobalShader);
 };
 
+class FParticlePS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FParticlePS);
+	using FParameters = FParametersVSPS;
+	SHADER_USE_PARAMETER_STRUCT(FParticlePS, FGlobalShader);
+};
