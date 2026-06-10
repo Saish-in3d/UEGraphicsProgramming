@@ -49,6 +49,6 @@ void FS3L1_BasicParticleEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
 
 void FS3L1_BasicParticleEffectPS(FVSOut In, out float4 OutColor : SV_Target0)
 {
-	float a = saturate(In.Life / 6.0);
-	OutColor = float4(a, 0.4 * a, 1.0 - a, 1.0);
+	//float a = saturate(In.Life / 6.0);
+	OutColor = float4(1,0,0,0)/*float4(a, 0.4 * a, 1.0 - a, 1.0)*/;
 }

@@ -4,6 +4,13 @@
 #include "S3_ParticleEffectsShaders.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
+
+
+#include "PipelineStateCache.h"      // SetGraphicsPipelineState
+#include "CommonRenderResources.h"   // GEmptyVertexDeclaration
+#include "RHIStaticStates.h"         // TStaticBlendState / RasterizerState / DepthStencilState
+#include "ShaderParameterStruct.h"   // SetShaderParameters
+
 #include "Animation/InputScaleBias.h"
 #include "Chaos/AABBTree.h"
 #include "Chaos/AABBTree.h"
@@ -214,15 +221,53 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 	TShaderMapRef<FS3L1_BasicParticleEffectVS> VertexShader(GetGlobalShaderMap(View.GetFeatureLevel()));
 	TShaderMapRef<FS3L1_BasicParticleEffectPS> PixelShader (GetGlobalShaderMap(View.GetFeatureLevel()));
 
-	//const uint32 NumPrimitives = (uint32)ParticleCount * 2;
+	const uint32 NumPrimitives = (uint32)ParticleCount * 2;
 
-	/*GraphBuilder.AddPass(
+	GraphBuilder.AddPass(
 		RDG_EVENT_NAME("ParticleDraw"), P, ERDGPassFlags::Raster,
 		[P, VertexShader, PixelShader, ViewportRect, NumPrimitives]
 		(FRHICommandList& RHICmdList)
 		{
-			// ... identical PSO setup + DrawPrimitive as before ...
-		});*/
+			FGraphicsPipelineStateInitializer PSOInit;
+			RHICmdList.ApplyCachedRenderTargets(PSOInit); // picks up RenderTargets from P
+
+			// additive-ish alpha blend
+			PSOInit.BlendState = TStaticBlendState<
+													CW_RGBA,
+													BO_Add,
+													BF_SourceAlpha,
+													BF_InverseSourceAlpha,
+													BO_Add,
+													BF_One,
+													BF_Zero
+													>::GetRHI();
+
+			PSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
+
+			// Unreal uses reversed-Z: "closer" passes with GreaterEqual.
+			// Depth test on, depth write OFF (we bound depth read-only above).
+			PSOInit.DepthStencilState =
+				TStaticDepthStencilState<false, CF_GreaterEqual>::GetRHI();
+
+			PSOInit.PrimitiveType = PT_TriangleList;
+			PSOInit.BoundShaderState.VertexDeclarationRHI =
+				GEmptyVertexDeclaration.VertexDeclarationRHI; // no vertex stream; VS uses SV_VertexID
+			PSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+			PSOInit.BoundShaderState.PixelShaderRHI  = PixelShader.GetPixelShader();
+
+			SetGraphicsPipelineState(RHICmdList, PSOInit, 0);
+
+			RHICmdList.SetViewport(
+				(float)ViewportRect.Min.X, (float)ViewportRect.Min.Y, 0.0f,
+				(float)ViewportRect.Max.X, (float)ViewportRect.Max.Y, 1.0f);
+
+			SetShaderParameters(RHICmdList, VertexShader, VertexShader.GetVertexShader(), *P);
+			SetShaderParameters(RHICmdList, PixelShader,  PixelShader.GetPixelShader(),  *P);
+
+			// base vertex 0, NumPrimitives triangles, 1 instance.
+			// The VS reads ParticleBuffer[SV_VertexID / 6] and expands the quad.
+			RHICmdList.DrawPrimitive(0, NumPrimitives, 1);
+		});
 	
 	
 	

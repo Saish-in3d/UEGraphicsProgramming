@@ -74,32 +74,36 @@ public:
 };
 	
 	
-	
+BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPSVSParameters,)
+	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
+	SHADER_PARAMETER(FMatrix44f, WorldToClip)
+	SHADER_PARAMETER(float, PointSize)
+	SHADER_PARAMETER(uint32, ParticleCount)
+	RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()	
 	
 
 class FS3L1_BasicParticleEffectVS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FS3L1_BasicParticleEffectVS);
 	
-	FS3L1_BasicParticleEffectVS() = default;
+	/*FS3L1_BasicParticleEffectVS() = default;
 	FS3L1_BasicParticleEffectVS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
 		: FGlobalShader(Initializer)
-	{}
+	{}*/
+	
+	using FParameters = FS3L1_BasicParticleEffectPSVSParameters;
+	SHADER_USE_PARAMETER_STRUCT(FS3L1_BasicParticleEffectVS, FGlobalShader);
 };
 
 class FS3L1_BasicParticleEffectPS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FS3L1_BasicParticleEffectPS);
 	
+	using FParameters = FS3L1_BasicParticleEffectPSVSParameters;
 	SHADER_USE_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPS, FGlobalShader);
 	
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
-	SHADER_PARAMETER(FMatrix44f, WorldToClip)
-	SHADER_PARAMETER(float, PointSize)
-	SHADER_PARAMETER(uint32, ParticleCount)
-	RENDER_TARGET_BINDING_SLOTS()
-	END_SHADER_PARAMETER_STRUCT()
+	
 	
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
