@@ -10,8 +10,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 
 
-IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectCS, "/Plugins/UEGraphicsProgramming/FS3L1_BasicParticleEffectCS.usf",
-						"FS3L1_BasicParticleEffectCS", SF_Compute);
+
 
 
 void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
@@ -30,7 +29,7 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 			TArray<FParticle> InitialParticleArray;
 			InitialParticleArray.SetNum(ParticleCount);
 			
-			for (int i = 0 ;i < ParticleCount; i++)
+			for (int i = 0 ;i << ParticleCount; i++)
 			{
 				FVector3f TempInitialParticleLocation = FVector3f();
 				TempInitialParticleLocation.X = FMath::FRand() * 2.f - 1.f;
@@ -96,6 +95,9 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 	
 	
 }
+
+IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectCS, "/Plugins/UEGraphicsProgramming/FS3L1_BasicParticleEffectCS.usf",
+						"FS3L1_BasicParticleEffectCS", SF_Compute);
 
 void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
                                                                  const float inDeltatime,
@@ -180,10 +182,12 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectVSRun(TRefCountPtr<FR
 	
 }
 
-IMPLEMENT_GLOBAL_SHADER(FParticleVS,       "/Project/ParticleRender.usf", "MainVS", SF_Vertex);
-IMPLEMENT_GLOBAL_SHADER(FParticlePS,       "/Project/ParticleRender.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectVS,"/Plugins/UEGraphicsProgramming/FS3L1_BasicParticleEffectVSPS.usf",
+	"FS3L1_BasicParticleEffectVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectPS,"/Plugins/UEGraphicsProgramming/FS3L1_BasicParticleEffectVSPS.usf",
+	"FS3L1_BasicParticleEffectPS", SF_Pixel);
 
-void FS3L1_BasicParticleEffectCS::AddPass(
+void FS3L1_BasicParticleEffectPS::AddPass(
 		FRDGBuilder& GraphBuilder,
 		const FSceneView& View,
 		FRDGTextureRef ColorTexture,
@@ -196,8 +200,8 @@ void FS3L1_BasicParticleEffectCS::AddPass(
 	FRDGBufferRef ParticleBuffer = GraphBuilder.RegisterExternalBuffer(
 		PooledParticleBuffer, TEXT("ParticleBuffer"));
 
-	FParametersVSPS* P =
-		GraphBuilder.AllocParameters<FParametersVSPS>();
+	FParameters* P =
+		GraphBuilder.AllocParameters<FParameters>();
 	P->FS3L1_ParticleBuffer = GraphBuilder.CreateSRV(ParticleBuffer);
 	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());
 	P->PointSize      = PointSize * 0.001f;
@@ -207,18 +211,18 @@ void FS3L1_BasicParticleEffectCS::AddPass(
 		DepthTexture, ERenderTargetLoadAction::ELoad, ERenderTargetLoadAction::ELoad,
 		FExclusiveDepthStencil::DepthRead_StencilNop);
 
-	TShaderMapRef<FParticleVS> VertexShader(GetGlobalShaderMap(View.GetFeatureLevel()));
-	TShaderMapRef<FParticlePS> PixelShader (GetGlobalShaderMap(View.GetFeatureLevel()));
+	TShaderMapRef<FS3L1_BasicParticleEffectVS> VertexShader(GetGlobalShaderMap(View.GetFeatureLevel()));
+	TShaderMapRef<FS3L1_BasicParticleEffectPS> PixelShader (GetGlobalShaderMap(View.GetFeatureLevel()));
 
-	const uint32 NumPrimitives = (uint32)ParticleCount * 2;
+	//const uint32 NumPrimitives = (uint32)ParticleCount * 2;
 
-	GraphBuilder.AddPass(
+	/*GraphBuilder.AddPass(
 		RDG_EVENT_NAME("ParticleDraw"), P, ERDGPassFlags::Raster,
 		[P, VertexShader, PixelShader, ViewportRect, NumPrimitives]
 		(FRHICommandList& RHICmdList)
 		{
 			// ... identical PSO setup + DrawPrimitive as before ...
-		});
+		});*/
 	
 	
 	
