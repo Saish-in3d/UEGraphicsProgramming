@@ -195,36 +195,38 @@ IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectPS,"/Plugins/UEGraphicsProgramm
 	"FS3L1_BasicParticleEffectPS", SF_Pixel);
 
 void FS3L1_BasicParticleEffectPS::AddPass(
-		FRDGBuilder& GraphBuilder,
-		const FSceneView& View,
-		FRDGTextureRef ColorTexture,
-		FRDGTextureRef DepthTexture,
-		const FIntRect& ViewportRect,
-		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
+		FRDGBuilder& GraphBuilder,//creates a list commands that are fed to gpu
+		const FSceneView& View, // contains camera location rotations, projection matrix, viewport window etc
+		FRDGTextureRef ColorTexture, //scenecolor
+		FRDGTextureRef DepthTexture, // scene depth
+		const FIntRect& ViewportRect,// in case of splid screen or editor window
+		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer, //shared gpu compute buffer
 		int32 ParticleCount,
 		float PointSize)
 {
+	//Registering external gpuffer in the pass
 	FRDGBufferRef ParticleBuffer = GraphBuilder.RegisterExternalBuffer(
 		PooledParticleBuffer, TEXT("ParticleBuffer"));
 
 	FParameters* P =
 		GraphBuilder.AllocParameters<FParameters>();
 	P->FS3L1_ParticleBuffer = GraphBuilder.CreateSRV(ParticleBuffer);
-	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());
+	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());//see vertex shader
 	P->PointSize      = PointSize * 0.001f;
 	P->ParticleCount  = ParticleCount;
-	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad);
-	P->RenderTargets.DepthStencil = FDepthStencilBinding(
-		DepthTexture, ERenderTargetLoadAction::ELoad, ERenderTargetLoadAction::ELoad,
-		FExclusiveDepthStencil::DepthRead_StencilNop);
+	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad); //this pass will write output of the pass on this RT
+	P->RenderTargets.DepthStencil = FDepthStencilBinding( //binds depth buffer in the pass
+		DepthTexture, ERenderTargetLoadAction::ELoad, 
+		ERenderTargetLoadAction::ELoad,
+		FExclusiveDepthStencil::DepthRead_StencilNop);// This makes sure that this depth buffer is readonly
 
-	TShaderMapRef<FS3L1_BasicParticleEffectVS> VertexShader(GetGlobalShaderMap(View.GetFeatureLevel()));
-	TShaderMapRef<FS3L1_BasicParticleEffectPS> PixelShader (GetGlobalShaderMap(View.GetFeatureLevel()));
+	TShaderMapRef<FS3L1_BasicParticleEffectVS> VertexShader(GetGlobalShaderMap(View.GetFeatureLevel()));//fetches the previously compiled shaderr
+	TShaderMapRef<FS3L1_BasicParticleEffectPS> PixelShader (GetGlobalShaderMap(View.GetFeatureLevel()));//fetches the previously compiled shaderr
 
-	const uint32 NumPrimitives = (uint32)ParticleCount * 2;
+	const uint32 NumPrimitives = (uint32)ParticleCount * 2; //Here, primitive is a tringle, particle is drawn on a quad that has two triangles
 
 	GraphBuilder.AddPass(
-		RDG_EVENT_NAME("ParticleDraw"), P, ERDGPassFlags::Raster,
+		RDG_EVENT_NAME("ParticleDraw"), P, ERDGPassFlags::Raster, //ERDGPassFlags::Raster means draw pass
 		[P, VertexShader, PixelShader, ViewportRect, NumPrimitives]
 		(FRHICommandList& RHICmdList)
 		{
