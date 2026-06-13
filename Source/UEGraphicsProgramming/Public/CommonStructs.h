@@ -53,6 +53,7 @@ struct alignas(16) FParticle
 {
 	GENERATED_BODY()
 	
+	//This is a screen space position where z = depth mostly likely a fixed value in this case
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector3f Position;
 	
