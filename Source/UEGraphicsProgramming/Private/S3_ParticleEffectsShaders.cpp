@@ -197,7 +197,7 @@ IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectPS,"/Plugins/UEGraphicsProgramm
 void FS3L1_BasicParticleEffectPS::AddPass(
 		FRDGBuilder& GraphBuilder,//creates a list commands that are fed to gpu
 		const FSceneView& View, // contains camera location rotations, projection matrix, viewport window etc
-		FRDGTextureRef ColorTexture, //scenecolor
+		FRDGTextureRef ColorTexture, //contains scene color (unreal render pass output) we will overlay our pass over it
 		FRDGTextureRef DepthTexture, // scene depth
 		const FIntRect& ViewportRect,// in case of splid screen or editor window
 		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer, //shared gpu compute buffer
@@ -230,20 +230,25 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 		[P, VertexShader, PixelShader, ViewportRect, NumPrimitives]
 		(FRHICommandList& RHICmdList)
 		{
+			//A PSO (Pipeline State Object) bundles all fixed-function GPU state (blend mode, depth test,
+			//rasterizer settings, shaders, render target formats) into one immutable object the GPU can validate and switch quickly
 			FGraphicsPipelineStateInitializer PSOInit;
 			RHICmdList.ApplyCachedRenderTargets(PSOInit); // picks up RenderTargets from P
 
 			// additive-ish alpha blend
-			PSOInit.BlendState = TStaticBlendState<
-													CW_RGBA,
-													BO_Add,
-													BF_SourceAlpha,
-													BF_InverseSourceAlpha,
-													BO_Add,
-													BF_One,
+			PSOInit.BlendState = TStaticBlendState<//Blending controls how the pixel shader's output combines with what's already in the color buffer
+													CW_RGBA, //we will write rgba from this pass
+													BO_Add, //BO = blend operation (we will add our pass output over exusting buffer) finalColor = srcColor × srcAlpha + destColor × (1 − srcAlpha)
+													BF_SourceAlpha,//Blend factor A
+													BF_InverseSourceAlpha,//Blend factor B 
+													BO_Add, //These decides what happens with alpha 
+													BF_One, //dstAlpha = srcAlpha × 1 + dstAlpha × 0
 													BF_Zero
 													>::GetRHI();
 
+			//Rasterizer converts triangles into pixels
+			//FM_Solid (Fill mode) = fill triangles (no wireframe)
+			//CM_None (Cull mode)= no backface culling (Show particles facing opposite direction to camera)
 			PSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
 
 			// Unreal uses reversed-Z: "closer" passes with GreaterEqual.
@@ -251,14 +256,21 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 			PSOInit.DepthStencilState =
 				TStaticDepthStencilState<false, CF_GreaterEqual>::GetRHI();
 
-			PSOInit.PrimitiveType = PT_TriangleList;
+			PSOInit.PrimitiveType = PT_TriangleList; //Defining primitive type is triangle
+			//A vertex declaration normally describes the layout of vertex buffer data (position at offset 0, UV at offset 12...).
+			//Here it's empty because there is no vertex buffer at all. The vertex shader will instead use the built-in SV_VertexID 
+			//(a counter: 0, 1, 2, ...) to compute everything itself.
 			PSOInit.BoundShaderState.VertexDeclarationRHI =
 				GEmptyVertexDeclaration.VertexDeclarationRHI; // no vertex stream; VS uses SV_VertexID
+			//Plugs the two shader programs into the pipeline.
 			PSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
 			PSOInit.BoundShaderState.PixelShaderRHI  = PixelShader.GetPixelShader();
 
+			//Looks up (or compiles and caches) the actual PSO matching this description and binds it on the command list.
+			//From now on, draws use this complete pipeline configuration.
 			SetGraphicsPipelineState(RHICmdList, PSOInit, 0);
 
+			//Viewport and parameters
 			RHICmdList.SetViewport(
 				(float)ViewportRect.Min.X, (float)ViewportRect.Min.Y, 0.0f,
 				(float)ViewportRect.Max.X, (float)ViewportRect.Max.Y, 1.0f);
@@ -268,6 +280,7 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 
 			// base vertex 0, NumPrimitives triangles, 1 instance.
 			// The VS reads ParticleBuffer[SV_VertexID / 6] and expands the quad.
+			//Actual draw call
 			RHICmdList.DrawPrimitive(0, NumPrimitives, 1);
 		});
 	
