@@ -21,12 +21,12 @@
 
 
 void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
-	uint32 ParticleCount)
+	uint32 ParticleCount,FParticlesInitialised& inDelegate)
 {
 	
 	//Passing &inPooledParticleBufffer as refrence so need to make sure that pooled particle buffer is safe on game thread
 	ENQUEUE_RENDER_COMMAND(InitParticleBuffer)(
-		[&inPooledParticleBufffer,ParticleCount](FRHICommandListImmediate& RHICmdList)
+		[&inPooledParticleBufffer,ParticleCount,inDelegate](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//iF IT bLOCKS RENDER THREAD, MOVE data creation loop on a worker thread or use parallel for
@@ -36,7 +36,7 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 			TArray<FParticle> InitialParticleArray;
 			InitialParticleArray.SetNum(ParticleCount);
 			
-			for (int i = 0 ;i << ParticleCount; i++)
+			for (uint32 i = 0 ;i < ParticleCount; i++)
 			{
 				FVector3f TempInitialParticleLocation = FVector3f();
 				TempInitialParticleLocation.X = FMath::FRand() * 2.f - 1.f;
@@ -96,6 +96,11 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 			RHICmdList.UnlockBuffer(
 			inPooledParticleBufffer->GetRHI()
 			);
+			
+			AsyncTask(ENamedThreads::GameThread,[inDelegate]
+			{
+				inDelegate.Broadcast(100);
+			});
 			
 			
 		});
@@ -204,9 +209,12 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 		int32 ParticleCount,
 		float PointSize)
 {
+	check(IsInRenderingThread());
+	check(PooledParticleBuffer.IsValid());
+	if (!PooledParticleBuffer.IsValid()){return;}
 	//Registering external gpuffer in the pass
 	FRDGBufferRef ParticleBuffer = GraphBuilder.RegisterExternalBuffer(
-		PooledParticleBuffer, TEXT("ParticleBuffer"));
+		PooledParticleBuffer, TEXT("ParticleBufferr"));
 
 	FParameters* P =
 		GraphBuilder.AllocParameters<FParameters>();

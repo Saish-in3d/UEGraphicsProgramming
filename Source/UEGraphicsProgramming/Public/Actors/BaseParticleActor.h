@@ -4,7 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "S3_ParticleEffectsShaders.h"
+#include "UEGraphicsProgramming.h"
 #include "BaseParticleActor.generated.h"
+
+class FParticleProxy
+{
+public:
+	TRefCountPtr<FRDGPooledBuffer> PooledParticleBuffer;
+};
+
+
 
 UCLASS()
 class UEGRAPHICSPROGRAMMING_API ABaseParticleActor : public AActor
@@ -14,6 +24,12 @@ class UEGRAPHICSPROGRAMMING_API ABaseParticleActor : public AActor
 public:	
 	// Sets default values for this actor's properties
 	ABaseParticleActor();
+	
+	UPROPERTY(EditAnywhere)
+	int32 ParticleCount =1;
+	
+	UPROPERTY(EditAnywhere)
+	float PointSize = 100;
 
 protected:
 	// Called when the game starts or when spawned
@@ -21,6 +37,16 @@ protected:
 
 public:	
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
+	virtual void Tick(float DeltaTime) override;\
+	
+	private:
+	TSharedPtr<FParticleProxy, ESPMode::ThreadSafe> PooledParticleBufferProxy;
+	
+	
+	
+	FParticlesInitialised OnParticlesInitialised;
+	
+	void OnParticlesInitialisedFunction(int a);
+	
+	void EndPlay(EEndPlayReason::Type EndPlayReason);
 };
