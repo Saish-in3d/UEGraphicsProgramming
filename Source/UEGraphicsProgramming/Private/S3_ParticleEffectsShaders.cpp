@@ -21,12 +21,12 @@
 
 
 void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
-	uint32 ParticleCount,FParticlesInitialised& inDelegate)
+                                                 uint32 ParticleCount, FParticlesInitialised& inDelegate, FVector3d ActorLocation)
 {
 	
 	//Passing &inPooledParticleBufffer as refrence so need to make sure that pooled particle buffer is safe on game thread
 	ENQUEUE_RENDER_COMMAND(InitParticleBuffer)(
-		[&inPooledParticleBufffer,ParticleCount,inDelegate](FRHICommandListImmediate& RHICmdList)
+		[&inPooledParticleBufffer,ParticleCount,inDelegate,ActorLocation](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//iF IT bLOCKS RENDER THREAD, MOVE data creation loop on a worker thread or use parallel for
@@ -38,7 +38,7 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 			
 			for (uint32 i = 0 ;i < ParticleCount; i++)
 			{
-				FVector3f TempInitialParticleLocation = FVector3f();
+				FVector3f TempInitialParticleLocation = FVector3f()  ;
 				TempInitialParticleLocation.X = FMath::FRand() * 2.f - 1.f;
 				TempInitialParticleLocation.Y = FMath::FRand() * 2.f - 1.f;
 				TempInitialParticleLocation.Z = FMath::FRand() * 2.f - 1.f;
@@ -51,6 +51,8 @@ void FS3L1_BasicParticleEffectCS::InitShaderData(TRefCountPtr<FRDGPooledBuffer>&
 				InitialParticleArray[i].Position.X = TempInitialParticleLocation.X;
 				InitialParticleArray[i].Position.Y = TempInitialParticleLocation.Y;
 				InitialParticleArray[i].Position.Z = TempInitialParticleLocation.Z + 3;
+				
+				//InitialParticleArray[i].Position += FVector3f(ActorLocation);
 				
 				InitialParticleArray[i].Velocity.X = 0;
 				InitialParticleArray[i].Velocity.Y = 0;
@@ -200,14 +202,20 @@ IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectPS,"/Plugins/UEGraphicsProgramm
 	"FS3L1_BasicParticleEffectPS", SF_Pixel);
 
 void FS3L1_BasicParticleEffectPS::AddPass(
-		FRDGBuilder& GraphBuilder,//creates a list commands that are fed to gpu
-		const FSceneView& View, // contains camera location rotations, projection matrix, viewport window etc
-		FRDGTextureRef ColorTexture, //contains scene color (unreal render pass output) we will overlay our pass over it
-		FRDGTextureRef DepthTexture, // scene depth
-		const FIntRect& ViewportRect,// in case of splid screen or editor window
-		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer, //shared gpu compute buffer
-		int32 ParticleCount,
-		float PointSize)
+	FRDGBuilder& GraphBuilder,
+	//creates a list commands that are fed to gpu
+	const FSceneView& View,
+	// contains camera location rotations, projection matrix, viewport window etc
+	FRDGTextureRef ColorTexture,
+	//contains scene color (unreal render pass output) we will overlay our pass over it
+	FRDGTextureRef DepthTexture,
+	// scene depth
+	const FIntRect& ViewportRect,
+	// in case of splid screen or editor window
+	const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
+	//shared gpu compute buffer
+	int32 ParticleCount,
+	float PointSize, FVector3f ActorLocation)
 {
 	check(IsInRenderingThread());
 	check(PooledParticleBuffer.IsValid());
@@ -222,6 +230,7 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());//see vertex shader
 	P->PointSize      = PointSize * 0.001f;
 	P->ParticleCount  = ParticleCount;
+	P->ActorLocation = ActorLocation;
 	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad); //this pass will write output of the pass on this RT
 	P->RenderTargets.DepthStencil = FDepthStencilBinding( //binds depth buffer in the pass
 		DepthTexture, ERenderTargetLoadAction::ELoad, 

@@ -22,6 +22,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPSVSParameters,)
 	SHADER_PARAMETER(FMatrix44f, WorldToClip)
 	SHADER_PARAMETER(float, PointSize)
 	SHADER_PARAMETER(uint32, ParticleCount)
+	SHADER_PARAMETER(FVector3f, ActorLocation)
 	RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -61,9 +62,9 @@ public:
 	
 	
 	static void InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
-								uint32 ParticleCount,
-								FParticlesInitialised& inDelegate
-								);
+	                           uint32 ParticleCount,
+	                           FParticlesInitialised& inDelegate, FVector3d ActorLocation
+	);
 	
 	//Shader run function
 
@@ -125,7 +126,7 @@ class FS3L1_BasicParticleEffectPS : public FGlobalShader
 		const FIntRect& ViewportRect,
 		const TRefCountPtr<FRDGPooledBuffer>& ParticleBuffer,
 		int32 ParticleCount,
-		float PointSize);
+		float PointSize, FVector3f ActorLocation);
 	
 	
 };

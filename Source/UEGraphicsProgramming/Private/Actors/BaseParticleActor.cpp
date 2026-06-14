@@ -26,7 +26,7 @@ void ABaseParticleActor::BeginPlay()
 	
 	PooledParticleBufferProxy = MakeShared<FParticleProxy, ESPMode::ThreadSafe>();
 	
-	FS3L1_BasicParticleEffectCS::InitShaderData(PooledParticleBufferProxy->PooledParticleBuffer,ParticleCount,OnParticlesInitialised);
+	FS3L1_BasicParticleEffectCS::InitShaderData(PooledParticleBufferProxy->PooledParticleBuffer,ParticleCount,OnParticlesInitialised, GetActorLocation());
 	
 	
 }
@@ -60,13 +60,14 @@ void ABaseParticleActor::OnParticlesInitialisedFunction(int a)
 		const FSceneView& View = *Params.View;
 		
 		FS3L1_BasicParticleEffectPS::AddPass(*Params.GraphBuilder,
-											View,
-											Params.ColorTexture,
-											Params.DepthTexture,
-											Params.ViewportRect,
-											this->PooledParticleBufferProxy->PooledParticleBuffer,
-											this->ParticleCount,
-											this->PointSize);
+		                                     View,
+		                                     Params.ColorTexture,
+		                                     Params.DepthTexture,
+		                                     Params.ViewportRect,
+		                                     this->PooledParticleBufferProxy->PooledParticleBuffer,
+		                                     this->ParticleCount,
+		                                     this->PointSize, 
+		                                     FVector3f(GetActorLocation()));
 		
 	});
 	Module.BoundRendererDelegate();

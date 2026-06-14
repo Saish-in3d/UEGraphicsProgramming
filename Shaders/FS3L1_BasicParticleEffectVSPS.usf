@@ -37,6 +37,7 @@ float4x4 WorldToClip; // view * perspective projection matrix -> used to convert
 //converting logic of world position to clip position is below 
 float    PointSize;     
 uint     ParticleCount;
+float3 ActorLocation;
 
 // just like threadID in compute, we will process each vertex of the mesh using VertexId
 void FS3L1_BasicParticleEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
@@ -51,7 +52,7 @@ void FS3L1_BasicParticleEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
 	
 	//Converting world space particle location to clip space
 	//multiplying position bu viev*perspective projecton matrix
-	float4 clip = mul(float4(P.Position, 1.0), WorldToClip);// matrices multiplication operation
+	float4 clip = mul(float4(P.Position + ActorLocation, 1.0), WorldToClip);// matrices multiplication operation
 
 	// unit quad corners
 	float2 offsets[6] =
@@ -60,9 +61,10 @@ void FS3L1_BasicParticleEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
 		float2(-1, 1), float2(1,-1), float2(1, 1)
 	};
 	
-	//Assumptions TODO:
-	//Looks like clip calculation above converts particle quad in a way yhat is shrinks like it's in the real world
-	//we need it in screen space so we multiple particle quad vertices by w to negate the depth effect
+	
+	// clip.xy or float2 o are screenspace variables for location of a single vertex of a quad.
+	//During further rasterization, xy gets extremely small as it is normalised by z
+	//to remove the effect of normalisation by z we are multiplying xy by z befroe rasterization so it negates sriknage during rasterization
 	float2 o = offsets[corner] * PointSize * clip.w;
 
 	clip.xy += o;

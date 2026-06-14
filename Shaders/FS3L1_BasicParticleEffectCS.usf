@@ -22,6 +22,8 @@ float Deltatime;
 void FS3L1_BasicParticleEffectCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	
-
-	
+	/*FGPUParticle TempParticle = FS3L1_ParticleBuffer[DispatchThreadId.x];
+	FS3L1_ParticleBuffer[DispatchThreadId.x].Position = TempParticle.Position + float3(0,0,2000);
+	FS3L1_ParticleBuffer[DispatchThreadId.x].Life = TempParticle.Life;
+	FS3L1_ParticleBuffer[DispatchThreadId.x].Velocity = TempParticle.Velocity;*/
 }
