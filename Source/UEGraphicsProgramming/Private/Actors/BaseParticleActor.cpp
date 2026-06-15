@@ -13,7 +13,17 @@ ABaseParticleActor::ABaseParticleActor()
 	
 	OnParticlesInitialised.AddLambda([this](int a)
 	{
-		this->OnParticlesInitialisedFunction(a);
+		switch (LessonIndex)
+		{
+		default:
+			this->OnQuadParticlesInitialisedFunction(a);
+		case 0:
+			this->OnQuadParticlesInitialisedFunction(a);
+		case 1:
+			this->OnPointParticlesInitialisedFunction(a);
+			
+		}
+		
 	});
 	
 
@@ -38,7 +48,47 @@ void ABaseParticleActor::Tick(float DeltaTime)
 
 }
 
-void ABaseParticleActor::OnParticlesInitialisedFunction(int a)
+void ABaseParticleActor::OnPointParticlesInitialisedFunction(int a)
+{
+	if (FModuleManager::Get().IsModuleLoaded("UEGraphicsProgramming"))
+	{
+		FUEGraphicsProgrammingModule& Module =
+			FModuleManager::GetModuleChecked<FUEGraphicsProgrammingModule>(
+				"UEGraphicsProgramming");
+		
+		//Module.BoundRendererDelegate();
+		
+		Module.D.BindLambda([this](FPostOpaqueRenderParameters& Params)
+	{
+			check(this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
+		bool isPooledBufferValid = this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid();
+			
+			
+		if (!isPooledBufferValid){return;}
+		
+		const FSceneView& View = *Params.View;
+		
+		FS3L0_BasicParticlePointEffectPS::FS3L0_BasicPointParticleEffectCSVSRun(
+											*Params.GraphBuilder,
+											 View,
+											 Params.ColorTexture,
+											 Params.DepthTexture,
+											 Params.ViewportRect,
+											 this->PooledParticleBufferProxy->PooledParticleBuffer,
+											 this->ParticleCount,
+											 this->PointSize, 
+											 FVector3f(GetActorLocation()));
+		
+	});
+		Module.BoundRendererDelegate();
+	
+		
+		
+	}
+	
+}
+
+void ABaseParticleActor::OnQuadParticlesInitialisedFunction(int a)
 {
 	
 	if (FModuleManager::Get().IsModuleLoaded("UEGraphicsProgramming"))

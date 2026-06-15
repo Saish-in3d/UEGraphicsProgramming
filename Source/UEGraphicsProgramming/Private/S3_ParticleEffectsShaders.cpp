@@ -480,7 +480,7 @@ void FS3L0_BasicParticlePointEffectPS::FS3L0_BasicPointParticleEffectCSVSRun(
 		GraphBuilder.AllocParameters<FParameters>();
 	P->FS3L1_ParticleBuffer = GraphBuilder.CreateSRV(ParticleBuffer);
 	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());//see vertex shader
-	P->PointSize      = PointSize * 0.001f;
+	P->PointSize      = PointSize * 100 /** 0.001f*/;
 	P->ParticleCount  = ParticleCount;
 	P->ActorLocation = ActorLocation;
 	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad); //this pass will write output of the pass on this RT

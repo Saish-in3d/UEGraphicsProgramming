@@ -30,6 +30,9 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	float PointSize = 100;
+	
+	UPROPERTY(EditAnywhere)
+	int32 LessonIndex = 0;
 
 protected:
 	// Called when the game starts or when spawned
@@ -46,7 +49,9 @@ public:
 	
 	FParticlesInitialised OnParticlesInitialised;
 	
-	void OnParticlesInitialisedFunction(int a);
+	void OnPointParticlesInitialisedFunction(int a);
+	
+	void OnQuadParticlesInitialisedFunction(int a);
 	
 	void EndPlay(EEndPlayReason::Type EndPlayReason);
 };

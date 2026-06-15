@@ -20,7 +20,7 @@ struct FVSOut
 {
 	float4 Position : SV_POSITION; //Clip space position of a vertice
 	float  Life     : TEXCOORD0;  //life of each particle, same for all 6 verticces in a particle
-	//float Size :PSIZE;
+	float Size :PSIZE;
 };
  
 
@@ -42,17 +42,17 @@ float3 ActorLocation;
 // just like threadID in compute, we will process each vertex of the mesh using VertexId
 void FS3L0_BasicParticlePointEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
 {
-	//Finding particle index and corner from vertex id
+	/*//Finding particle index and corner from vertex id
 	//6 vertex wil have same particleindex
 	uint particleIndex = VertexId / 6;
-	uint corner        = VertexId % 6;
+	uint corner        = VertexId % 6;*/
 
 	//Getting ParticleData
-	FGPUParticle P = FS3L1_ParticleBuffer[particleIndex];
+	FGPUParticle P = FS3L1_ParticleBuffer[VertexId];
 	
 	//Converting world space particle location to clip space
 	//multiplying position bu viev*perspective projecton matrix
-	float4 clip = mul(float4(P.Position + ActorLocation, 1.0), WorldToClip);// matrices multiplication operation
+	float4 clip = mul(float4(P.Position  + ActorLocation, 1.0), WorldToClip);// matrices multiplication operation
 
 	// unit quad corners
 	float2 offsets[6] =
@@ -65,11 +65,12 @@ void FS3L0_BasicParticlePointEffectVS(uint VertexId : SV_VertexID, out FVSOut Ou
 	// clip.xy or float2 o are screenspace variables for location of a single vertex of a quad.
 	//During further rasterization, xy gets extremely small as it is normalised by z
 	//to remove the effect of normalisation by z we are multiplying xy by z befroe rasterization so it negates sriknage during rasterization
-	float2 o = offsets[corner] * PointSize * clip.w;
+	//float2 o = offsets[corner] * PointSize /** clip.w*/;
 
-	clip.xy += o;
+	//clip.xy += o;
 	Out.Position = clip;
 	Out.Life     = P.Life;
+	Out.Size = 10000;
 	
 }
 
