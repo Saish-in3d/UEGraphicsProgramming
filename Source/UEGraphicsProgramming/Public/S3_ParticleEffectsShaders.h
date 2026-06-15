@@ -17,13 +17,21 @@
 DECLARE_MULTICAST_DELEGATE_OneParam(FParticlesInitialised, int32);
 	
 	
-BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPSVSParameters,)
+BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPSVSParametersStruct,)
 	SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
 	SHADER_PARAMETER(FMatrix44f, WorldToClip)
 	SHADER_PARAMETER(float, PointSize)
 	SHADER_PARAMETER(uint32, ParticleCount)
 	SHADER_PARAMETER(FVector3f, ActorLocation)
 	RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()
+
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectCSParametersStruct,)
+	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
+	SHADER_PARAMETER(uint32, ParticleCount)
+	SHADER_PARAMETER(FVector3f, Focus)
+	SHADER_PARAMETER(float, Deltatime)
 	END_SHADER_PARAMETER_STRUCT()
 
 //Shader declaration
@@ -34,14 +42,10 @@ public:
 	
 	DECLARE_GLOBAL_SHADER(FS3L1_BasicParticleEffectCS)
 	
+	using FParameters = FS3L1_BasicParticleEffectCSParametersStruct;
 	SHADER_USE_PARAMETER_STRUCT(FS3L1_BasicParticleEffectCS,FGlobalShader)
 	
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-	SHADER_PARAMETER_RDG_BUFFER_UAV(RWStructuredBuffer<FParticle>, FS3L1_ParticleBuffer)
-	SHADER_PARAMETER(uint32, ParticleCount)
-	SHADER_PARAMETER(FVector3f, Focus)
-	SHADER_PARAMETER(float, Deltatime)
-	END_SHADER_PARAMETER_STRUCT()
+
 	
 	// Basic shader initialization
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -93,7 +97,7 @@ class FS3L1_BasicParticleEffectVS : public FGlobalShader
 		: FGlobalShader(Initializer)
 	{}*/
 	
-	using FParameters = FS3L1_BasicParticleEffectPSVSParameters;
+	using FParameters = FS3L1_BasicParticleEffectPSVSParametersStruct;
 	SHADER_USE_PARAMETER_STRUCT(FS3L1_BasicParticleEffectVS, FGlobalShader);
 };
 
@@ -101,7 +105,7 @@ class FS3L1_BasicParticleEffectPS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FS3L1_BasicParticleEffectPS);
 	
-	using FParameters = FS3L1_BasicParticleEffectPSVSParameters;
+	using FParameters = FS3L1_BasicParticleEffectPSVSParametersStruct;
 	SHADER_USE_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPS, FGlobalShader);
 	
 	
