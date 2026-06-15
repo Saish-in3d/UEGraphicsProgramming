@@ -128,9 +128,107 @@ class FS3L1_BasicParticleEffectPS : public FGlobalShader
 		FRDGTextureRef ColorTexture,
 		FRDGTextureRef DepthTexture,
 		const FIntRect& ViewportRect,
-		const TRefCountPtr<FRDGPooledBuffer>& ParticleBuffer,
+		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
 		int32 ParticleCount,
 		float PointSize, FVector3f ActorLocation);
+	
+	
+};
+
+
+
+
+
+
+//Shader declaration
+
+class UEGRAPHICSPROGRAMMING_API FS3L0_BasicPointParticleEffectCS : public FGlobalShader
+{
+public:
+	
+	DECLARE_GLOBAL_SHADER(FS3L0_BasicPointParticleEffectCS)
+	
+	using FParameters = FS3L1_BasicParticleEffectCSParametersStruct;
+	SHADER_USE_PARAMETER_STRUCT(FS3L0_BasicPointParticleEffectCS,FGlobalShader)
+	
+
+	
+	// Basic shader initialization
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+	
+	static constexpr int ThreadsX = 64;
+	
+	// Define environment variables used by compute shader
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
+		FShaderCompilerEnvironment& OutEnvironment)
+	{
+		OutEnvironment.SetDefine(TEXT("THREADS_X"), ThreadsX);
+		OutEnvironment.SetDefine(TEXT("THREADS_Y"), 1);
+		OutEnvironment.SetDefine(TEXT("THREADS_Z"), 1);
+	}
+	
+	
+	static void InitShaderData(TRefCountPtr<FRDGPooledBuffer>& inPooledParticleBufffer,
+	                           uint32 ParticleCount,
+	                           FParticlesInitialised& inDelegate, FVector3d ActorLocation
+	);
+	
+	//Shader run function
+
+	static void FS3L0_BasicPointParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
+												const float inDeltatime,
+												uint32 ParticleCount,
+												FVector3f Focus);
+	
+	
+	
+	
+	
+
+	
+};
+
+class FS3L0_BasicParticlePointEffectVS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FS3L0_BasicParticlePointEffectVS);
+
+	using FParameters = FS3L1_BasicParticleEffectPSVSParametersStruct;
+	SHADER_USE_PARAMETER_STRUCT(FS3L0_BasicParticlePointEffectVS, FGlobalShader);
+};
+
+class FS3L0_BasicParticlePointEffectPS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FS3L0_BasicParticlePointEffectPS);
+	
+	using FParameters = FS3L1_BasicParticleEffectPSVSParametersStruct;
+	SHADER_USE_PARAMETER_STRUCT(FS3L0_BasicParticlePointEffectPS, FGlobalShader);
+	
+	
+	
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return !IsMobilePlatform(Parameters.Platform);
+	}
+	
+	static void ModifyCompilationEnvironment(
+	   const FGlobalShaderPermutationParameters& Parameters,
+	   FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	}
+	
+	static void FS3L0_BasicPointParticleEffectCSVSRun(
+													FRDGBuilder& GraphBuilder,
+													const FSceneView& View,
+													FRDGTextureRef ColorTexture,
+													FRDGTextureRef DepthTexture,
+													const FIntRect& ViewportRect,
+													const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
+													int32 ParticleCount,
+													float PointSize, FVector3f ActorLocation);
 	
 	
 };

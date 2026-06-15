@@ -1,0 +1,81 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+
+//Particle struct used on cpu side
+struct FGPUParticle
+{
+	//This is a screen space position where z = depth mostly likely a fixed value in this case
+	float3 Position;
+
+	float Life;
+
+	float3 Velocity;
+};
+
+//Output of vertex shader
+//Our single particle is a quad -> two triangles -> 6 vertices
+struct FVSOut
+{
+	float4 Position : SV_POSITION; //Clip space position of a vertice
+	float  Life     : TEXCOORD0;  //life of each particle, same for all 6 verticces in a particle
+	//float Size :PSIZE;
+};
+ 
+
+StructuredBuffer<FGPUParticle> FS3L1_ParticleBuffer; //compute shader location of particle
+float4x4 WorldToClip; // view * perspective projection matrix -> used to convert world space positions to clip space.
+// Clip space means the space within view frustrum
+//X = Left right, Y = Up Down, 
+//Z = Depth normalised to clip space, ex near clip is 1cm far is 100 cm and vertex z is 50 cm then my depth is 0.5 after normalising with w
+//w = perspective information (eg: in perspective projection, vertices away from camera has larger w value)
+//float4 Position : SV_POSITION; has xyzw, same is calculated in the vertex shader
+// for direct if the position is inside frustrum then w> x, y & z
+//ClipPos = (2, 0, 0.5, 1) outside of frustrum as 1<2
+//This clip positions are sent to radterizer where they are normalised and clipped
+//converting logic of world position to clip position is below 
+float    PointSize;     
+uint     ParticleCount;
+float3 ActorLocation;
+
+// just like threadID in compute, we will process each vertex of the mesh using VertexId
+void FS3L0_BasicParticlePointEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
+{
+	//Finding particle index and corner from vertex id
+	//6 vertex wil have same particleindex
+	uint particleIndex = VertexId / 6;
+	uint corner        = VertexId % 6;
+
+	//Getting ParticleData
+	FGPUParticle P = FS3L1_ParticleBuffer[particleIndex];
+	
+	//Converting world space particle location to clip space
+	//multiplying position bu viev*perspective projecton matrix
+	float4 clip = mul(float4(P.Position + ActorLocation, 1.0), WorldToClip);// matrices multiplication operation
+
+	// unit quad corners
+	float2 offsets[6] =
+	{
+		float2(-1,-1), float2(1,-1), float2(-1,1),
+		float2(-1, 1), float2(1,-1), float2(1, 1)
+	};
+	
+	
+	// clip.xy or float2 o are screenspace variables for location of a single vertex of a quad.
+	//During further rasterization, xy gets extremely small as it is normalised by z
+	//to remove the effect of normalisation by z we are multiplying xy by z befroe rasterization so it negates sriknage during rasterization
+	float2 o = offsets[corner] * PointSize * clip.w;
+
+	clip.xy += o;
+	Out.Position = clip;
+	Out.Life     = P.Life;
+	
+}
+
+
+void FS3L0_BasicParticlePointEffectPS(FVSOut In, out float4 OutColor : SV_Target0)
+{
+	//float a = saturate(In.Life / 6.0);
+	OutColor = float4(0,0,1,1)/*float4(a, 0.4 * a, 1.0 - a, 1.0)*/;
+}
