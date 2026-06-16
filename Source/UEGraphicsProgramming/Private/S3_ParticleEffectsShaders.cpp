@@ -235,6 +235,7 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 	P->ParticleTexture = ParticleTextureRHI;
 	P->ActorLocation = ActorLocation;
 	P->ParticleSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+	P->AspectRatio = (float)ViewportRect.Width() / (float)ViewportRect.Height();
 	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad); //this pass will write output of the pass on this RT
 	P->RenderTargets.DepthStencil = FDepthStencilBinding( //binds depth buffer in the pass
 		DepthTexture, ERenderTargetLoadAction::ELoad, 
