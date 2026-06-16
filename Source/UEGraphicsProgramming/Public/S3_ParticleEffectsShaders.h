@@ -23,6 +23,8 @@ BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPSVSParametersStruct,)
 	SHADER_PARAMETER(float, PointSize)
 	SHADER_PARAMETER(uint32, ParticleCount)
 	SHADER_PARAMETER(FVector3f, ActorLocation)
+	SHADER_PARAMETER_TEXTURE(Texture2D, ParticleTexture)
+	SHADER_PARAMETER_SAMPLER(SamplerState, ParticleSampler)
 	RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -130,7 +132,9 @@ class FS3L1_BasicParticleEffectPS : public FGlobalShader
 		const FIntRect& ViewportRect,
 		const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
 		int32 ParticleCount,
-		float PointSize, FVector3f ActorLocation);
+		float PointSize,
+		FVector3f ActorLocation,
+		FRHITexture* ParticleTextureRHI);
 	
 	
 };

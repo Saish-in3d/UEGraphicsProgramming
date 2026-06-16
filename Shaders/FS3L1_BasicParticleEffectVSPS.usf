@@ -20,7 +20,7 @@ struct FVSOut
 {
 	float4 Position : SV_POSITION; //Clip space position of a vertice
 	float  Life     : TEXCOORD0;  //life of each particle, same for all 6 verticces in a particle
-	//float Size :PSIZE;
+	float2 UV : TEXCOORD1;
 };
  
 
@@ -61,6 +61,13 @@ void FS3L1_BasicParticleEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
 		float2(-1, 1), float2(1,-1), float2(1, 1)
 	};
 	
+	// UVs matched to the offsets above (V flipped for top-left origin)
+	float2 uvs[6] =
+	{
+		float2(0,1), float2(1,1), float2(0,0),
+		float2(0,0), float2(1,1), float2(1,0)
+	 };
+	
 	
 	// clip.xy or float2 o are screenspace variables for location of a single vertex of a quad.
 	//During further rasterization, xy gets extremely small as it is normalised by z
@@ -70,12 +77,19 @@ void FS3L1_BasicParticleEffectVS(uint VertexId : SV_VertexID, out FVSOut Out)
 	clip.xy += o;
 	Out.Position = clip;
 	Out.Life     = P.Life;
+	Out.UV       = uvs[corner];
 	
 }
 
 
+Texture2D    ParticleTexture;
+SamplerState ParticleSampler;
+
 void FS3L1_BasicParticleEffectPS(FVSOut In, out float4 OutColor : SV_Target0)
 {
 	//float a = saturate(In.Life / 6.0);
-	OutColor = float4(1,0,0,1)/*float4(a, 0.4 * a, 1.0 - a, 1.0)*/;
+	//OutColor = float4(1,0,0,1)/*float4(a, 0.4 * a, 1.0 - a, 1.0)*/;
+	
+	float4 tex = ParticleTexture.Sample(ParticleSampler, In.UV);
+	OutColor = tex;
 }

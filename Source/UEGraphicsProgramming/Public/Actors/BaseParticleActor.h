@@ -33,6 +33,9 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	int32 LessonIndex = 0;
+	
+	UPROPERTY(EditAnywhere)
+	UTexture2D* ParticleSpriteTexture;
 
 protected:
 	// Called when the game starts or when spawned
@@ -40,7 +43,9 @@ protected:
 
 public:	
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;\
+	virtual void Tick(float DeltaTime) override;
+	
+	
 	
 	private:
 	TSharedPtr<FParticleProxy, ESPMode::ThreadSafe> PooledParticleBufferProxy;
@@ -56,4 +61,6 @@ public:
 	void OnQuadParticlesInitialisedFunction(int a);
 	
 	void EndPlay(EEndPlayReason::Type EndPlayReason);
+	
+	
 };

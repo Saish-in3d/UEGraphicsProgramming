@@ -215,7 +215,8 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 	const TRefCountPtr<FRDGPooledBuffer>& PooledParticleBuffer,
 	//shared gpu compute buffer
 	int32 ParticleCount,
-	float PointSize, FVector3f ActorLocation)
+	float PointSize, FVector3f ActorLocation,
+	FRHITexture* ParticleTextureRHI)
 {
 	check(IsInRenderingThread());
 	check(PooledParticleBuffer.IsValid());
@@ -230,7 +231,10 @@ void FS3L1_BasicParticleEffectPS::AddPass(
 	P->WorldToClip    = FMatrix44f(View.ViewMatrices.GetViewProjectionMatrix());//see vertex shader
 	P->PointSize      = PointSize * 0.001f;
 	P->ParticleCount  = ParticleCount;
+	if (!ParticleTextureRHI->IsValid()){P->ParticleTexture = GWhiteTexture->TextureRHI;}
+	P->ParticleTexture = ParticleTextureRHI;
 	P->ActorLocation = ActorLocation;
+	P->ParticleSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 	P->RenderTargets[0] = FRenderTargetBinding(ColorTexture, ERenderTargetLoadAction::ELoad); //this pass will write output of the pass on this RT
 	P->RenderTargets.DepthStencil = FDepthStencilBinding( //binds depth buffer in the pass
 		DepthTexture, ERenderTargetLoadAction::ELoad, 

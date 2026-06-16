@@ -111,6 +111,11 @@ void ABaseParticleActor::OnQuadParticlesInitialisedFunction(int a)
 		if (!isPooledBufferValid){return;}
 		
 		const FSceneView& View = *Params.View;
+			
+		if (!ParticleSpriteTexture){return;}
+		
+			FRHITexture* TexRHI = (ParticleSpriteTexture && ParticleSpriteTexture->GetResource())
+		? ParticleSpriteTexture->GetResource()->GetTextureRHI(): nullptr;
 		
 		FS3L1_BasicParticleEffectPS::AddPass(*Params.GraphBuilder,
 		                                     View,
@@ -120,7 +125,7 @@ void ABaseParticleActor::OnQuadParticlesInitialisedFunction(int a)
 		                                     this->PooledParticleBufferProxy->PooledParticleBuffer,
 		                                     this->ParticleCount,
 		                                     this->PointSize, 
-		                                     FVector3f(GetActorLocation()));
+		                                     FVector3f(GetActorLocation()), TexRHI);
 		
 	});
 	Module.BoundRendererDelegate(RendererHandle,D);
