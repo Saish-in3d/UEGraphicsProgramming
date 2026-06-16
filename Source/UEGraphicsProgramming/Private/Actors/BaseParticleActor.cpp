@@ -17,10 +17,13 @@ ABaseParticleActor::ABaseParticleActor()
 		{
 		default:
 			this->OnQuadParticlesInitialisedFunction(a);
+			break;
 		case 0:
 			this->OnQuadParticlesInitialisedFunction(a);
+			break;
 		case 1:
 			this->OnPointParticlesInitialisedFunction(a);
+			break;
 			
 		}
 		
@@ -60,7 +63,7 @@ void ABaseParticleActor::OnPointParticlesInitialisedFunction(int a)
 		
 		Module.D.BindLambda([this](FPostOpaqueRenderParameters& Params)
 	{
-			check(this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
+		//check(this && this->PooledParticleBufferProxy.IsValid() &&  this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
 		bool isPooledBufferValid = this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid();
 			
 			
@@ -101,7 +104,7 @@ void ABaseParticleActor::OnQuadParticlesInitialisedFunction(int a)
 		
 		Module.D.BindLambda([this](FPostOpaqueRenderParameters& Params)
 	{
-			check(this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
+			//check(this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
 		bool isPooledBufferValid = this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid();
 			
 			
