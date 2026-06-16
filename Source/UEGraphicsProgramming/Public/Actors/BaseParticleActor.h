@@ -45,7 +45,9 @@ public:
 	private:
 	TSharedPtr<FParticleProxy, ESPMode::ThreadSafe> PooledParticleBufferProxy;
 	
+	FDelegateHandle RendererHandle;
 	
+	FPostOpaqueRenderDelegate D;
 	
 	FParticlesInitialised OnParticlesInitialised;
 	

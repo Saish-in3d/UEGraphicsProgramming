@@ -10,17 +10,17 @@
 
 #define LOCTEXT_NAMESPACE "FUEGraphicsProgrammingModule"
 
-void FUEGraphicsProgrammingModule::BoundRendererDelegate()
+void FUEGraphicsProgrammingModule::BoundRendererDelegate(FDelegateHandle& inHandle,FPostOpaqueRenderDelegate& inPostOpaqueRenderDelegate)
 {
 
 	
-	Handle = GetRendererModule().RegisterPostOpaqueRenderDelegate(D);
+	inHandle = GetRendererModule().RegisterPostOpaqueRenderDelegate(inPostOpaqueRenderDelegate);
 }
 
-void FUEGraphicsProgrammingModule::UnboundRendererHandle()
+void FUEGraphicsProgrammingModule::UnboundRendererHandle(FDelegateHandle& inHandle,FPostOpaqueRenderDelegate& inPostOpaqueRenderDelegate)
 {
-	GetRendererModule().RemovePostOpaqueRenderDelegate(Handle);
-	Handle.Reset();
+	GetRendererModule().RemovePostOpaqueRenderDelegate(inHandle);
+	inHandle.Reset();
 }
 
 void FUEGraphicsProgrammingModule::StartupModule()

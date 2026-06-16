@@ -61,7 +61,7 @@ void ABaseParticleActor::OnPointParticlesInitialisedFunction(int a)
 		
 		//Module.BoundRendererDelegate();
 		
-		Module.D.BindLambda([this](FPostOpaqueRenderParameters& Params)
+		D.BindLambda([this](FPostOpaqueRenderParameters& Params)
 	{
 		//check(this && this->PooledParticleBufferProxy.IsValid() &&  this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
 		bool isPooledBufferValid = this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid();
@@ -83,7 +83,7 @@ void ABaseParticleActor::OnPointParticlesInitialisedFunction(int a)
 											 FVector3f(GetActorLocation()));
 		
 	});
-		Module.BoundRendererDelegate();
+		Module.BoundRendererDelegate(RendererHandle,D);
 	
 		
 		
@@ -102,7 +102,7 @@ void ABaseParticleActor::OnQuadParticlesInitialisedFunction(int a)
 		
 		//Module.BoundRendererDelegate();
 		
-		Module.D.BindLambda([this](FPostOpaqueRenderParameters& Params)
+		D.BindLambda([this](FPostOpaqueRenderParameters& Params)
 	{
 			//check(this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid());
 		bool isPooledBufferValid = this->PooledParticleBufferProxy->PooledParticleBuffer.IsValid();
@@ -123,7 +123,7 @@ void ABaseParticleActor::OnQuadParticlesInitialisedFunction(int a)
 		                                     FVector3f(GetActorLocation()));
 		
 	});
-	Module.BoundRendererDelegate();
+	Module.BoundRendererDelegate(RendererHandle,D);
 	
 		
 		
@@ -140,12 +140,12 @@ void ABaseParticleActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		FUEGraphicsProgrammingModule& Module =
 			FModuleManager::GetModuleChecked<FUEGraphicsProgrammingModule>("UEGraphicsProgramming");
 
-		if (Module.Handle.IsValid())
+		if (RendererHandle.IsValid())
 		{
-			Module.UnboundRendererHandle();
+			Module.UnboundRendererHandle(RendererHandle,D);
 			
 		}
-		Module.D.Unbind();
+		D.Unbind();
 	}
 
 	// Drain any post-opaque pass already in flight that may still touch this actor
