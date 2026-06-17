@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -36,6 +36,15 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	UTexture2D* ParticleSpriteTexture;
+	
+	//Sideways push that carries the particles around the actor. Terminal orbit speed settles at
+	//roughly 1.44 * this value, in world units per second.
+	UPROPERTY(EditAnywhere)
+	float OrbitSpeed = 150.f;
+	
+	//Distance from the actor the ring settles at, in world units.
+	UPROPERTY(EditAnywhere)
+	float OrbitRadius = 100.f;
 
 protected:
 	// Called when the game starts or when spawned
@@ -59,6 +68,10 @@ public:
 	void OnPointParticlesInitialisedFunction(int a);
 	
 	void OnQuadParticlesInitialisedFunction(int a);
+	
+	//The particle buffer is filled on the render thread. This is set from the game thread once
+	//that has finished, so Tick knows when it is safe to start dispatching the simulation.
+	bool bParticlesInitialised = false;
 	
 	void EndPlay(EEndPlayReason::Type EndPlayReason);
 	

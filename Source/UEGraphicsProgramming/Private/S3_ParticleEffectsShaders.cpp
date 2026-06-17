@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "S3_ParticleEffectsShaders.h"
@@ -116,13 +116,15 @@ IMPLEMENT_GLOBAL_SHADER(FS3L1_BasicParticleEffectCS, "/Plugins/UEGraphicsProgram
 void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
                                                                  const float inDeltatime,
                                                                  uint32 ParticleCount,
-                                                                 FVector3f Focus)
+                                                                 FVector3f Focus,
+                                                                 const float inOrbitSpeed,
+                                                                 const float inOrbitRadius)
 {
 	if (!inPooledParticleBufffer.IsValid()){return;}
 	
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(FS3L1_BasicParticleEffectCSRun)(
-		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
+		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus,inOrbitSpeed,inOrbitRadius](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//Getting new graph builder each frame
@@ -141,6 +143,8 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FR
 			FS3L1_Parameters->ParticleCount = ParticleCount;
 			FS3L1_Parameters->Focus = Focus; //Assuming that RT is a squaree
 			FS3L1_Parameters->Deltatime = inDeltatime;
+			FS3L1_Parameters->OrbitSpeed = inOrbitSpeed;
+			FS3L1_Parameters->OrbitRadius = inOrbitRadius;
 			
 			
 			//Dispatching shader
@@ -148,7 +152,10 @@ void FS3L1_BasicParticleEffectCS::FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FR
 			TShaderMapRef<FS3L1_BasicParticleEffectCS> FS3L1_ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 			
 			//Setting up Group Count
-			FIntVector GroupCount = FIntVector(ParticleCount+ ThreadsX - 1/ThreadsX,1,1);
+			//Round the thread count up to a whole number of groups. The brackets matter: without
+			//them 1/ThreadsX is integer division and collapses to 0, which dispatches
+			//ParticleCount + ThreadsX groups instead of ParticleCount / ThreadsX.
+			FIntVector GroupCount = FIntVector(FMath::DivideAndRoundUp(ParticleCount, (uint32)ThreadsX),1,1);
 			
 			//Actually dispatching the shader
 			
@@ -405,14 +412,14 @@ IMPLEMENT_GLOBAL_SHADER(FS3L0_BasicPointParticleEffectCS, "/Plugins/UEGraphicsPr
 
 void FS3L0_BasicPointParticleEffectCS::FS3L0_BasicPointParticleEffectCSRun(
 	TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer, const float inDeltatime, uint32 ParticleCount,
-	FVector3f Focus)
+	FVector3f Focus, const float inOrbitSpeed, const float inOrbitRadius)
 {
 	
 	if (!inPooledParticleBufffer.IsValid()){return;}
 	
 	// Executing logic in render thread while passing OutputRender target to render thread via this lambda function
 	ENQUEUE_RENDER_COMMAND(FS3L0_BasicPointParticleEffectCSRun)(
-		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus](FRHICommandListImmediate& RHICmdList)
+		[inPooledParticleBufffer,inDeltatime,ParticleCount,Focus,inOrbitSpeed,inOrbitRadius](FRHICommandListImmediate& RHICmdList)
 		{
 			
 			//Getting new graph builder each frame
@@ -431,6 +438,8 @@ void FS3L0_BasicPointParticleEffectCS::FS3L0_BasicPointParticleEffectCSRun(
 			FS3L0_Parameters->ParticleCount = ParticleCount;
 			FS3L0_Parameters->Focus = Focus; //Assuming that RT is a squaree
 			FS3L0_Parameters->Deltatime = inDeltatime;
+			FS3L0_Parameters->OrbitSpeed = inOrbitSpeed;
+			FS3L0_Parameters->OrbitRadius = inOrbitRadius;
 			
 			
 			//Dispatching shader
@@ -438,7 +447,10 @@ void FS3L0_BasicPointParticleEffectCS::FS3L0_BasicPointParticleEffectCSRun(
 			TShaderMapRef<FS3L0_BasicPointParticleEffectCS> FS3L0_ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 			
 			//Setting up Group Count
-			FIntVector GroupCount = FIntVector(ParticleCount+ ThreadsX - 1/ThreadsX,1,1);
+			//Round the thread count up to a whole number of groups. The brackets matter: without
+			//them 1/ThreadsX is integer division and collapses to 0, which dispatches
+			//ParticleCount + ThreadsX groups instead of ParticleCount / ThreadsX.
+			FIntVector GroupCount = FIntVector(FMath::DivideAndRoundUp(ParticleCount, (uint32)ThreadsX),1,1);
 			
 			//Actually dispatching the shader
 			

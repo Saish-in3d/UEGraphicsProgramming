@@ -15,15 +15,70 @@ shared RWStructuredBuffer<FGPUParticle> FS3L1_ParticleBuffer;
 uint ParticleCount;
 float3 Focus;
 float Deltatime;
+float OrbitSpeed;
+float OrbitRadius;
 
 
 
 [numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
-void FS3L0_BasicPointParticleEffectCS(uint2 DispatchThreadId : SV_DispatchThreadID)
+void FS3L0_BasicPointParticleEffectCS(uint3 DispatchThreadId : SV_DispatchThreadID)
 {
-	
-	/*FGPUParticle TempParticle = FS3L1_ParticleBuffer[DispatchThreadId.x];
-	FS3L1_ParticleBuffer[DispatchThreadId.x].Position = TempParticle.Position + float3(0,0,2000);
-	FS3L1_ParticleBuffer[DispatchThreadId.x].Life = TempParticle.Life;
-	FS3L1_ParticleBuffer[DispatchThreadId.x].Velocity = TempParticle.Velocity;*/
+	//One thread per particle. The dispatch is rounded up to whole groups, so the leftover
+	//threads in the last group have no particle to work on and must bail out before they
+	//write past the end of the buffer.
+	uint ParticleIndex = DispatchThreadId.x;
+	if (ParticleIndex >= ParticleCount) { return; }
+
+	FGPUParticle P = FS3L1_ParticleBuffer[ParticleIndex];
+
+	//Everything below is in ACTOR LOCAL space. The vertex shader does Position + ActorLocation
+	//before projecting, so Focus = float3(0,0,0) literally means "the actor's own location".
+
+	//Offset from the spin axis (the actor's up axis). Z is dropped on purpose: we orbit around
+	//an AXIS, not around a single point. Orbiting a point collapses for any particle that
+	//happens to sit on that point, an axis only collapses on the axis line itself.
+	float3 Radial = float3(P.Position.x - Focus.x, P.Position.y - Focus.y, 0.0);
+	float  RadialDistance = length(Radial);
+
+	//Particles that spawned (almost) exactly on the axis have no meaningful radial direction,
+	//and normalising a zero vector gives NaN which would poison the buffer permanently.
+	//Life is randomised per particle at init time, so it is a free per particle angle to
+	//push them off the axis with.
+	if (RadialDistance < 0.0001)
+	{
+		float SeedAngle = P.Life * 2.0 * PI;
+		Radial = float3(cos(SeedAngle), sin(SeedAngle), 0.0);
+		RadialDistance = 1.0;
+	}
+
+	float3 RadialDirection = Radial / RadialDistance;
+
+	//Perpendicular to both the spin axis and the radial direction, so it pushes the particle
+	//sideways around the actor. This is the term that actually produces the orbit.
+	float3 TangentDirection = cross(float3(0.0, 0.0, 1.0), RadialDirection);
+
+	//Per particle speed variation, otherwise the whole cloud rotates like one rigid disc.
+	float SpeedScale = 0.75 + 0.5 * P.Life;
+
+	//Spring pulling the particle back towards OrbitRadius. Without it the tangential push
+	//would just fling everything outwards forever, with it the cloud settles into a ring.
+	float3 SpringAcceleration = RadialDirection * (OrbitRadius - RadialDistance) * 4.0;
+
+	float3 Acceleration = TangentDirection * OrbitSpeed * SpeedScale + SpringAcceleration;
+
+	//Semi implicit Euler, velocity first then position using the NEW velocity. More stable
+	//than the other order once there is a spring in the system.
+	P.Velocity += Acceleration * Deltatime;
+
+	//Damping bleeds energy off so the spring does not oscillate forever, and it also gives
+	//the tangential push a terminal speed of roughly 1.44 * OrbitSpeed instead of accelerating
+	//without limit. pow() keeps the damping frame rate independent.
+	P.Velocity *= pow(0.5, Deltatime);
+
+	P.Position += P.Velocity * Deltatime;
+
+	//Life doubles as a stable per particle phase for SpeedScale above, so keep it inside 0..1.
+	P.Life = frac(P.Life + Deltatime * 0.1);
+
+	FS3L1_ParticleBuffer[ParticleIndex] = P;
 }

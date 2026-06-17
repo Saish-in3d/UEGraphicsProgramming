@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -35,6 +35,8 @@ BEGIN_SHADER_PARAMETER_STRUCT(FS3L1_BasicParticleEffectPSVSParametersStruct,)
 	SHADER_PARAMETER(uint32, ParticleCount)
 	SHADER_PARAMETER(FVector3f, Focus)
 	SHADER_PARAMETER(float, Deltatime)
+	SHADER_PARAMETER(float, OrbitSpeed)
+	SHADER_PARAMETER(float, OrbitRadius)
 	END_SHADER_PARAMETER_STRUCT()
 
 //Shader declaration
@@ -78,7 +80,9 @@ public:
 	static void FS3L1_BasicParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
 												const float inDeltatime,
 												uint32 ParticleCount,
-												FVector3f Focus);
+												FVector3f Focus,
+												const float inOrbitSpeed,
+												const float inOrbitRadius);
 	
 	
 	
@@ -186,7 +190,9 @@ public:
 	static void FS3L0_BasicPointParticleEffectCSRun(TRefCountPtr<FRDGPooledBuffer> inPooledParticleBufffer,
 												const float inDeltatime,
 												uint32 ParticleCount,
-												FVector3f Focus);
+												FVector3f Focus,
+												const float inOrbitSpeed,
+												const float inOrbitRadius);
 	
 	
 	
