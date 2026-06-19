@@ -1,0 +1,140 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+	//Must match FBoid on the C++ side: float3 + float + float3 + float = 32 bytes.
+	struct FGPUBoid
+	{
+		float3 Position;
+
+		float Speed;
+
+		float3 Velocity;
+
+		float Padding;
+	};
+
+//Ping pong pair. Every boid reads the position and velocity of every OTHER boid, so the frame's
+//input has to stay untouched while we run. Writing into the same buffer we are reading would mean
+//a boid sees some neighbours already advanced to this frame and some still on the last one,
+//and which ones is down to thread scheduling - a different flock every run.
+StructuredBuffer<FGPUBoid>   FS3L2_BoidsIn;
+RWStructuredBuffer<FGPUBoid> FS3L2_BoidsOut;
+
+uint  BoidCount;
+float Deltatime;
+float3 Focus;
+
+float NeighbourRadius;
+float SeparationRadius;
+float SeparationWeight;
+float AlignmentWeight;
+float CohesionWeight;
+float ContainmentRadius;
+float ContainmentWeight;
+float MinSpeed;
+float MaxSpeed;
+
+
+
+[numthreads(THREADS_X,THREADS_Y,THREADS_Z)]
+void FS3L2_InstancedMeshBoidsCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+	//One thread per boid. The dispatch is rounded up to whole groups, so the leftover threads
+	//in the last group have no boid to work on and must bail out.
+	uint BoidIndex = DispatchThreadId.x;
+	if (BoidIndex >= BoidCount) { return; }
+
+	FGPUBoid Self = FS3L2_BoidsIn[BoidIndex];
+
+	//The three Reynolds accumulators.
+	float3 SeparationSum = float3(0.0, 0.0, 0.0);
+	float3 VelocitySum   = float3(0.0, 0.0, 0.0);
+	float3 PositionSum   = float3(0.0, 0.0, 0.0);
+	uint   NeighbourCount = 0;
+
+	//Compare squared distances so the inner loop never needs a sqrt.
+	float NeighbourRadiusSq  = NeighbourRadius * NeighbourRadius;
+	float SeparationRadiusSq = SeparationRadius * SeparationRadius;
+
+	//Brute force O(N*N): each boid inspects every other boid. Fine for the few hundred to few
+	//thousand instances this lesson drives. Past that the usual fix is to bin the boids into a
+	//uniform grid first and only visit the 27 neighbouring cells.
+	for (uint i = 0; i < BoidCount; i++)
+	{
+		if (i == BoidIndex) { continue; }
+
+		FGPUBoid Other = FS3L2_BoidsIn[i];
+
+		float3 Offset = Other.Position - Self.Position;
+		float  DistanceSq = dot(Offset, Offset);
+
+		//Outside the perception radius, or exactly coincident (which would divide by zero below).
+		if (DistanceSq >= NeighbourRadiusSq || DistanceSq <= 0.000001) { continue; }
+
+		//ALIGNMENT and COHESION both average over everything inside the perception radius.
+		VelocitySum += Other.Velocity;
+		PositionSum += Other.Position;
+		NeighbourCount++;
+
+		//SEPARATION only applies to the closer band. Offset points from Self towards Other, so
+		//subtracting it pushes Self away. Dividing by the squared distance makes a neighbour that
+		//is half as far away push four times as hard, which is what stops boids merging.
+		if (DistanceSq < SeparationRadiusSq)
+		{
+			SeparationSum -= Offset / DistanceSq;
+		}
+	}
+
+	float3 Acceleration = float3(0.0, 0.0, 0.0);
+
+	if (NeighbourCount > 0)
+	{
+		float3 AverageVelocity = VelocitySum / (float)NeighbourCount;
+		float3 AveragePosition = PositionSum / (float)NeighbourCount;
+
+		//Steer towards the neighbourhood's heading.
+		Acceleration += (AverageVelocity - Self.Velocity) * AlignmentWeight;
+
+		//Steer towards the neighbourhood's centre of mass.
+		Acceleration += (AveragePosition - Self.Position) * CohesionWeight;
+
+		//And away from whoever is crowding us.
+		Acceleration += SeparationSum * SeparationWeight;
+	}
+
+	//Containment. Without this the flock performs a slow random walk out of the level, because
+	//nothing in the three rules above references the world at all. Focus is the actor's own
+	//location (see the C++ side), so the flock stays a sphere around the actor.
+	float3 ToFocus = Focus - Self.Position;
+	float  DistanceToFocus = length(ToFocus);
+	if (DistanceToFocus > ContainmentRadius)
+	{
+		float3 FocusDirection = ToFocus / max(DistanceToFocus, 0.0001);
+		Acceleration += FocusDirection * (DistanceToFocus - ContainmentRadius) * ContainmentWeight;
+	}
+
+	float3 NewVelocity = Self.Velocity + Acceleration * Deltatime;
+
+	//Boids are birds, not billiard balls: they always move, and they never move faster than they
+	//can. Renormalising to a clamped speed keeps the heading the steering produced while forcing
+	//the magnitude into [MinSpeed, MaxSpeed].
+	float NewSpeed = length(NewVelocity);
+	if (NewSpeed < 0.0001)
+	{
+		//Degenerate - the steering exactly cancelled. Pick an arbitrary heading rather than
+		//normalising a zero vector, which would produce NaN and corrupt this boid permanently.
+		NewVelocity = float3(1.0, 0.0, 0.0);
+		NewSpeed    = 1.0;
+	}
+	float ClampedSpeed = clamp(NewSpeed, MinSpeed, MaxSpeed);
+	NewVelocity = (NewVelocity / NewSpeed) * ClampedSpeed;
+
+	FGPUBoid Result;
+	Result.Position = Self.Position + NewVelocity * Deltatime;
+	Result.Speed    = ClampedSpeed;
+	Result.Velocity = NewVelocity;
+	Result.Padding  = 0.0;
+
+	FS3L2_BoidsOut[BoidIndex] = Result;
+}

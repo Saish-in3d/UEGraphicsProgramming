@@ -1,0 +1,124 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ScreenPass.ush"
+
+
+//Must match FBoid on the C++ side.
+struct FGPUBoid
+{
+	float3 Position;
+
+	float Speed;
+
+	float3 Velocity;
+
+	float Padding;
+};
+
+//Must match FBoidMeshVertex on the C++ side.
+struct FGPUBoidMeshVertex
+{
+	float3 Position;
+
+	float Padding0;
+
+	float3 Normal;
+
+	float Padding1;
+};
+
+//Output of vertex shader
+struct FVSOut
+{
+	float4 Position : SV_POSITION; //Clip space position of a vertex
+	float3 Normal   : TEXCOORD0;   //World space normal, for the lambert term in the pixel shader
+	float  Speed    : TEXCOORD1;   //Handy for tinting fast boids differently
+};
+
+
+//The mesh, de-indexed on the CPU into a flat triangle list. There is no index buffer and no vertex
+//declaration bound: the vertex shader pulls the vertex it wants straight out of this buffer using
+//SV_VertexID, exactly like S3L1 does for its quads. The only difference is that S3L1 makes its
+//geometry up from an offsets[] table, and this reads real mesh data.
+StructuredBuffer<FGPUBoidMeshVertex> FS3L2_MeshVertexBuffer;
+
+//One entry per boid, written by FS3L2_InstancedMeshBoidsCS. Indexed by SV_InstanceID, which is
+//what makes this an INSTANCED draw: one DrawPrimitive call, BoidCount copies of the same geometry,
+//each one reading its own transform out of here.
+StructuredBuffer<FGPUBoid> FS3L2_BoidBuffer;
+
+float4x4 WorldToClip;
+float3   ActorLocation;
+float3   BoidScale;
+uint     BoidCount;
+float3   LightDirection;
+float4   BoidColor;
+
+
+//Builds an orthonormal basis whose X axis points along Forward.
+//This is the HLSL equivalent of FRotationMatrix::MakeFromX on the C++ side: whichever way the
+//source mesh faces along its own +X becomes the direction of travel.
+float3x3 MakeBasisFromX(float3 Forward)
+{
+	//Any vector not parallel to Forward works as the hint. Near the poles the obvious choice of
+	//world up IS parallel to Forward, and cross() would return zero, so swap hints there.
+	float3 UpHint = (abs(Forward.z) > 0.99) ? float3(1.0, 0.0, 0.0) : float3(0.0, 0.0, 1.0);
+
+	float3 Right = normalize(cross(UpHint, Forward));
+	float3 Up    = cross(Forward, Right);
+
+	//Rows are the basis vectors; mul(v, basis) below expands v along them.
+	return float3x3(Forward, Right, Up);
+}
+
+
+void FS3L2_InstancedMeshBoidsVS(uint VertexId   : SV_VertexID,
+                                uint InstanceId : SV_InstanceID,
+                                out FVSOut Out)
+{
+	//SV_InstanceID picks the boid, SV_VertexID picks the vertex of the mesh. The GPU runs this
+	//for every (vertex, instance) pair by itself - that is the whole point of instancing, the CPU
+	//issues one draw call and never touches per boid data.
+	FGPUBoid Boid = FS3L2_BoidBuffer[InstanceId];
+
+	FGPUBoidMeshVertex MeshVertex = FS3L2_MeshVertexBuffer[VertexId];
+
+	//Orient the mesh along the boid's heading.
+	float3 Forward = Boid.Velocity;
+	float  SpeedSq = dot(Forward, Forward);
+	//A stationary boid has no heading to build a basis from, so fall back to +X rather than
+	//normalising a zero vector.
+	Forward = (SpeedSq > 0.000001) ? (Forward * rsqrt(SpeedSq)) : float3(1.0, 0.0, 0.0);
+
+	float3x3 BoidBasis = MakeBasisFromX(Forward);
+
+	//Scale in the mesh's own space, then rotate into the boid's frame.
+	float3 ScaledLocalPosition = MeshVertex.Position * BoidScale;
+	float3 RotatedPosition = mul(ScaledLocalPosition, BoidBasis);
+
+	//Boid.Position is actor local (see the compute shader), so the actor's own location is added
+	//here to land in world space.
+	float3 WorldPosition = ActorLocation + Boid.Position + RotatedPosition;
+
+	//Normals rotate with the mesh but must NOT pick up the scale. A non uniform BoidScale would
+	//need the inverse transpose; the basis here is orthonormal, so rotating is enough.
+	float3 WorldNormal = mul(MeshVertex.Normal, BoidBasis);
+
+	Out.Position = mul(float4(WorldPosition, 1.0), WorldToClip);
+	Out.Normal   = WorldNormal;
+	Out.Speed    = Boid.Speed;
+}
+
+
+void FS3L2_InstancedMeshBoidsPS(FVSOut In, out float4 OutColor : SV_Target0)
+{
+	//Plain half lambert. These meshes are drawn by our own pass, so none of the engine's lighting
+	//reaches them - whatever shading they get has to be done right here.
+	float3 Normal = normalize(In.Normal);
+	float  NdotL  = saturate(dot(Normal, -normalize(LightDirection)));
+
+	//Wrapped so the unlit side stays readable instead of going pure black.
+	float Lambert = 0.25 + 0.75 * NdotL;
+
+	OutColor = float4(BoidColor.rgb * Lambert, 1.0);
+}
